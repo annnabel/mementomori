@@ -49,20 +49,20 @@
   // --- Elements ---------------------------------------------------------
   const el = {
     form: $('birth-form'), dob: $('dob'), err: $('err'), sexSeg: $('sex-seg'),
-    results: $('results'),
+    heroSub: $('hero-sub'), results: $('results'),
     gridWrap: $('grid-wrap'), gridCanvas: $('grid'),
     capMain: $('cap-main'), smallPrint: $('small-print'),
-    legend: $('legend'), chartCanvas: $('chart'), insight: $('insight'),
+    legend: $('legend'), chartCanvas: $('chart'), readout: $('readout'), insight: $('insight'),
     actPrompt: $('act-prompt'), name: $('name'), sms: $('sms'), weekNext: $('week-next'),
     share: $('share'), shareMsg: $('share-msg'),
   };
 
-  // --- ?age= prefill (never auto-submits, never carries a birthdate) ----
+  // --- ?age= arrival (never touches the date field: the recipient confirms
+  //     their own date; the sharer's age only personalizes the invitation) --
   (() => {
     const a = parseInt(new URLSearchParams(location.search).get('age'), 10);
     if (a > 0 && a < 100) {
-      state.birthVal = (new Date().getFullYear() - a) + '-01-01';
-      el.dob.value = state.birthVal;
+      el.heroSub.textContent = `Your friend has lived about ${fmt(Math.round(a * 365.25 / 7))} weeks. See yours.`;
     }
   })();
   el.dob.max = new Date().toISOString().slice(0, 10);
@@ -184,6 +184,14 @@
       c.addEventListener('pointermove', (e) => { if (dragging) move(e); });
       c.addEventListener('pointerup', () => { dragging = false; });
       c.addEventListener('pointercancel', () => { dragging = false; });
+      c.addEventListener('keydown', (e) => {
+        const step = { ArrowLeft: -1, ArrowRight: 1, ArrowDown: -1, ArrowUp: 1, PageDown: -5, PageUp: 5 }[e.key];
+        const next = step != null ? Math.min(80, Math.max(15, scrub + step))
+          : e.key === 'Home' ? 15 : e.key === 'End' ? 80 : null;
+        if (next == null) return;
+        e.preventDefault();
+        if (next !== scrub) { scrub = next; drawChart(); }
+      });
     }
   }
   function drawChart() {
@@ -194,7 +202,7 @@
     const Y = (v) => h - m.b - v / yMax * (h - m.t - m.b);
     ctx.clearRect(0, 0, w, h);
     ctx.font = '11px Helvetica, Arial, sans-serif';
-    ctx.fillStyle = 'rgba(237,234,228,.38)';
+    ctx.fillStyle = 'rgba(237,234,228,.55)';
     ctx.strokeStyle = 'rgba(237,234,228,.09)';
     ctx.lineWidth = 1;
     for (let v = 0; v <= 8; v += 2) {
@@ -232,28 +240,40 @@
     ctx.textAlign = onRight ? 'left' : 'right';
     ctx.fillText(lbl, xi + (onRight ? 8 : -8), m.t - 3);
 
+    // Per-age values live in the DOM readout below the canvas (not a canvas
+    // tooltip): nothing occludes the lines, and the values are selectable,
+    // keyboard-reachable text.
     const rows = SERIES_ORDER
       .filter((k) => !state.hidden[k])
       .map((k) => ({ k, v: D.series[k][idx] }))
       .sort((a, b) => b.v - a.v);
-    if (!rows.length) return;
-    const bw = 128, bh = 16 + rows.length * 17 + 6;
-    const bx = onRight ? Math.min(xi + 12, w - m.r - bw) : Math.max(xi - 12 - bw, m.l);
-    const by = m.t + 8;
-    ctx.fillStyle = 'rgba(10,10,10,.88)';
-    ctx.strokeStyle = 'rgba(237,234,228,.16)';
-    ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.roundRect(bx, by, bw, bh, 6); ctx.fill(); ctx.stroke();
-    ctx.font = '11px Helvetica, Arial, sans-serif';
-    rows.forEach((r, i) => {
-      const y = by + 16 + i * 17;
-      ctx.fillStyle = COLORS[r.k];
-      ctx.beginPath(); ctx.arc(bx + 12, y - 3.5, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = 'rgba(237,234,228,.78)'; ctx.textAlign = 'left';
-      ctx.fillText(LABELS[r.k], bx + 21, y);
-      ctx.textAlign = 'right';
-      ctx.fillText(r.v.toFixed(1) + 'h', bx + bw - 10, y);
-    });
+    renderReadout(age, rows);
+  }
+  function renderReadout(age, rows) {
+    const frag = document.createDocumentFragment();
+    const ageEl = document.createElement('span');
+    ageEl.className = 'age';
+    ageEl.textContent = 'Age ' + age;
+    frag.appendChild(ageEl);
+    for (const r of rows) {
+      const item = document.createElement('span');
+      item.className = 'ro';
+      const dot = document.createElement('span');
+      dot.className = 'dot';
+      dot.style.background = COLORS[r.k];
+      const val = document.createElement('b');
+      val.textContent = r.v.toFixed(1) + 'h';
+      item.appendChild(dot);
+      item.appendChild(document.createTextNode(LABELS[r.k] + ' '));
+      item.appendChild(val);
+      frag.appendChild(item);
+    }
+    if (!rows.length) frag.appendChild(document.createTextNode('All lines are hidden — tap a name above to bring one back.'));
+    el.readout.replaceChildren(frag);
+    el.chartCanvas.setAttribute('aria-valuenow', String(age));
+    el.chartCanvas.setAttribute('aria-valuetext', 'Age ' + age + ': ' + (rows.length
+      ? rows.map((r) => LABELS[r.k] + ' ' + r.v.toFixed(1) + ' hours').join(', ')
+      : 'all lines hidden'));
   }
 
   function buildLegend() {
@@ -407,7 +427,7 @@
 
     if (el.gridWrap) {
       const top = el.gridWrap.getBoundingClientRect().top + window.scrollY - 28;
-      window.scrollTo({ top, behavior: 'smooth' });
+      window.scrollTo({ top, behavior: prefersReduced() ? 'auto' : 'smooth' });
     }
   }
 
