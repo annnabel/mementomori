@@ -10,12 +10,39 @@
 <meta property="og:title" content="Your Life in Weeks">
 <meta property="og:description" content="You have about 4,000 weeks. See yours.">
 <meta property="og:type" content="website">
+<meta property="og:url" content="https://annnabel.github.io/mementomori/">
+<meta property="og:image" content="https://annnabel.github.io/mementomori/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="A grid of dots, one per week of a life — most still hollow, one amber dot marking now.">
+<meta name="twitter:card" content="summary_large_image">
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300;0,6..72,400;0,6..72,500;1,6..72,300;1,6..72,400&display=swap" rel="stylesheet">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230A0A0A'/%3E%3Ccircle cx='32' cy='32' r='13' fill='%23D9863B'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<link rel="preload" href="fonts/newsreader-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/newsreader-italic-latin.woff2" as="font" type="font/woff2" crossorigin>
 
 <style>
+  /* Self-hosted Newsreader, subsetted to the glyphs the page sets in it
+     (ASCII + typographic punctuation), wght 300–500, opsz 18–72. */
+  @font-face {
+    font-family: 'Newsreader';
+    font-style: normal;
+    font-weight: 300 500;
+    font-display: swap;
+    src: url('fonts/newsreader-latin.woff2') format('woff2');
+    unicode-range: U+0020-007E, U+00A0, U+00B7, U+2013-2014, U+2018-201D, U+2026;
+  }
+  @font-face {
+    font-family: 'Newsreader';
+    font-style: italic;
+    font-weight: 300 400;
+    font-display: swap;
+    src: url('fonts/newsreader-italic-latin.woff2') format('woff2');
+    unicode-range: U+0020-007E, U+00A0, U+00B7, U+2013-2014, U+2018-201D, U+2026;
+  }
+
   *, *::before, *::after { box-sizing: border-box; }
 
   :root {
@@ -114,9 +141,9 @@
   }
   .field:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
 
-  .micro { font-size: 12.5px; color: rgba(237,234,228,.42); margin: 0; }
+  .micro { font-size: 12.5px; color: rgba(237,234,228,.55); margin: 0; }
 
-  .seg { display: flex; gap: 8px; }
+  .seg { display: flex; flex-wrap: wrap; gap: 8px; }
   .seg button {
     background: var(--field);
     color: rgba(237,234,228,.7);
@@ -165,7 +192,7 @@
     margin: 36px 0 8px;
     text-wrap: pretty;
   }
-  .small-print { font-size: 12.5px; color: rgba(237,234,228,.4); margin: 0; }
+  .small-print { font-size: 12.5px; color: rgba(237,234,228,.55); margin: 0; }
 
   /* ---- Chart ---- */
   .chart-sec { padding: 96px 24px; max-width: 680px; margin: 0 auto; }
@@ -191,17 +218,32 @@
     color: rgba(237,234,228,.8);
     cursor: pointer;
     font-family: inherit;
-    min-height: 32px;
+    min-height: 44px;
     transition: color .15s ease, border-color .15s ease;
   }
   .legend button[aria-pressed="false"] {
-    border-color: rgba(237,234,228,.12);
-    color: rgba(237,234,228,.35);
+    border-color: rgba(237,234,228,.16);
+    color: rgba(237,234,228,.55);
   }
-  .legend .dot { width: 8px; height: 8px; border-radius: 50%; }
-  .legend-hint { font-size: 11.5px; color: rgba(237,234,228,.38); margin: 0 0 14px; }
+  .legend .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .legend-hint { font-size: 13px; color: rgba(237,234,228,.55); margin: 0 0 14px; }
   .chart-sec canvas { display: block; width: 100%; touch-action: pan-y; cursor: ew-resize; }
-  .source { font-size: 11.5px; color: rgba(237,234,228,.38); margin: 12px 0 0; }
+  .chart-sec canvas:focus-visible { outline: 2px solid var(--amber); outline-offset: 4px; }
+  .readout {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 18px;
+    font-size: 13px;
+    color: rgba(237,234,228,.7);
+    font-variant-numeric: tabular-nums;
+    margin: 14px 0 0;
+  }
+  .readout .age { color: var(--amber); font-weight: 600; }
+  .readout .ro { display: inline-flex; align-items: center; gap: 6px; }
+  .readout .ro .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+  .readout .ro b { font-weight: 600; color: rgba(237,234,228,.92); }
+  .source { font-size: 13px; color: rgba(237,234,228,.55); margin: 12px 0 0; }
   .insight {
     font-family: var(--serif);
     font-size: clamp(19px, 4vw, 23px);
@@ -218,7 +260,7 @@
     font-style: italic;
     font-weight: 300;
     font-size: clamp(30px, 7vw, 58px);
-    line-height: 1.18;
+    line-height: 1.26;
     letter-spacing: -0.01em;
     max-width: 820px;
     margin: 0 auto;
@@ -239,7 +281,7 @@
     margin: 64px auto 0;
     text-wrap: pretty;
   }
-  .reframe .wealth .fade { color: rgba(237,234,228,.38); }
+  .reframe .wealth .fade { color: rgba(237,234,228,.5); }
 
   /* ---- Act + share ---- */
   .act { padding: 96px 24px 160px; max-width: 680px; margin: 0 auto; }
@@ -294,7 +336,7 @@
   <!-- 1 · Hero -->
   <section class="hero" aria-labelledby="hero-title">
     <h1 id="hero-title">You have about 4,000 weeks.</h1>
-    <p class="sub">See yours.</p>
+    <p class="sub" id="hero-sub">See yours.</p>
     <form class="form" id="birth-form" novalidate>
       <label class="lbl" for="dob">When were you born?</label>
       <input class="field" id="dob" type="date" autocomplete="bday">
@@ -314,12 +356,12 @@
   </section>
 
   <!-- Sections 2–5 appear after submit -->
-  <div id="results" aria-live="polite">
+  <div id="results">
 
     <!-- 2 · Calendar -->
     <section class="calendar" aria-labelledby="cap-main">
       <div id="grid-wrap"><canvas id="grid" aria-hidden="true"></canvas></div>
-      <p class="caption" id="cap-main"></p>
+      <p class="caption" id="cap-main" aria-live="polite"></p>
       <p class="small-print" id="small-print"></p>
     </section>
 
@@ -327,8 +369,9 @@
     <section class="chart-sec" data-reveal aria-labelledby="chart-title">
       <h2 id="chart-title">Who fills the weeks that remain</h2>
       <div class="legend" id="legend" role="group" aria-label="Toggle who is shown on the chart"></div>
-      <p class="legend-hint">Tap a person to show or hide their line.</p>
-      <canvas id="chart" role="img" aria-label="Hours per day spent with different people, by age"></canvas>
+      <p class="legend-hint">Drag the amber line to any age. Tap a person to show or hide their line.</p>
+      <div id="chart-wrap"><canvas id="chart" tabindex="0" role="slider" aria-orientation="horizontal" aria-valuemin="15" aria-valuemax="80" aria-label="Hours per day spent with different people, by age. Use the left and right arrow keys to change the age."></canvas></div>
+      <p class="readout" id="readout"></p>
       <p class="source">U.S. data — American Time Use Survey, via Our World in Data. Hours per day, by age.</p>
       <p class="insight" id="insight"></p>
     </section>

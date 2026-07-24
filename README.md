@@ -35,6 +35,9 @@ python3 -m http.server
 - `index.html` — markup + styles
 - `app.js` — all behavior (canvas grid, chart, share card), OWID/ATUS data
   inlined so nothing is fetched at runtime
+- `fonts/` — self-hosted, subsetted Newsreader variable fonts (no third-party
+  requests)
+- `og.png`, `apple-touch-icon.png` — link-preview card and touch icon
 
 ## `design/`
 
