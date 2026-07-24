@@ -191,7 +191,7 @@
   .primary:active { transform: translateY(1px); }
 
   /* ---- Calendar ---- */
-  .calendar { padding: 48px 24px 72px; max-width: 520px; margin: 0 auto; }
+  .calendar { padding: 48px 24px 72px; max-width: 680px; margin: 0 auto; }
   .calendar canvas { display: block; width: 100%; }
   .caption {
     font-family: var(--serif);
@@ -363,8 +363,8 @@
     <p class="sub" id="hero-sub">See yours.</p>
     <form class="form" id="birth-form" novalidate>
       <label class="lbl" for="dob">When were you born?</label>
-      <input class="field" id="dob" type="date" autocomplete="bday" aria-describedby="dob-privacy err">
-      <p class="micro" id="dob-privacy">Stays on your device — we store nothing.</p>
+      <input class="field" id="dob" type="text" autocomplete="bday" enterkeyhint="go" spellcheck="false" autocapitalize="off" placeholder="e.g. 24 July 1999" aria-describedby="dob-privacy err">
+      <p class="micro" id="dob-privacy">Any format works. Stays on your device — we store nothing.</p>
 
       <p class="err hidden" id="err" role="alert"></p>
       <button class="primary" type="submit">Show me my weeks</button>
@@ -376,7 +376,7 @@
 
     <!-- 2 · Calendar -->
     <section class="calendar" aria-labelledby="cap-main">
-      <p class="small-print grid-key">One dot per week. The amber dot is this week.</p>
+      <p class="small-print grid-key">Each column is a year. One dot per week — the amber dot is this week.</p>
       <div id="grid-wrap"><canvas id="grid" aria-hidden="true"></canvas></div>
       <p class="caption" id="cap-main" aria-live="polite" tabindex="-1"></p>
       <p class="small-print" id="small-print"><span id="small-print-text"></span><button class="quiet-link" type="button" id="basis-toggle" aria-expanded="false" aria-controls="basis-seg">Change life expectancy</button> · <button class="quiet-link" type="button" id="edit-dob"></button></p>
@@ -391,10 +391,10 @@
     <section class="chart-sec" data-reveal aria-labelledby="chart-title">
       <h2 id="chart-title">Who fills the weeks that remain</h2>
       <div class="legend" id="legend" role="group" aria-label="Toggle who is shown on the chart"></div>
-      <div id="chart-wrap"><canvas id="chart" tabindex="0" role="slider" aria-orientation="horizontal" aria-valuemin="15" aria-valuemax="80" aria-label="Hours per day spent with different people, by age. Use the left and right arrow keys to change the age."></canvas></div>
+      <div id="chart-wrap"><canvas id="chart" tabindex="0" role="slider" aria-orientation="horizontal" aria-valuemin="15" aria-valuemax="80" aria-label="Share of the waking day spent with different people, by age. Use the left and right arrow keys to change the age."></canvas></div>
       <p class="legend-hint">Drag the amber line to any age.</p>
       <p class="readout" id="readout"></p>
-      <p class="source">U.S. data — American Time Use Survey, via Our World in Data. Hours per day, by age. The data ends at age 80.</p>
+      <p class="source">U.S. data — American Time Use Survey, via Our World in Data. Shown as a share of a 16-hour waking day. Time with two people at once counts in both lines, so the shares don’t sum to 100%. Lines are lightly smoothed. The data ends at age 80.</p>
       <p class="insight" id="insight"></p>
     </section>
 
