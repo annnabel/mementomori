@@ -29,7 +29,11 @@ Core tokens (defined on `:root` in `index.html`):
 | `--amber` | `#D9863B` | The ember: current-week dot, scrub line, links, focus, errors |
 | `--amber-hi` | `#E8A05F` | Amber hover state |
 | `--field` | `#141412` | Input and segmented-control fill |
-| `--field-border` | `#2C2B28` | Input borders |
+| `--field-border` | `#3E3C38` | Input borders (~2:1 on `--bg`, so the field's bounds are findable) |
+
+Canvas surfaces can't read CSS custom properties, so the same tokens are
+mirrored once in `app.js` (`INK`, beside `COLORS`) — change `:root` and `INK`
+together.
 
 Opacity ramp on `--fg` (rgba of `237,234,228`) instead of gray tokens:
 
@@ -102,14 +106,18 @@ Scale (all fluid `clamp()`):
   active nudges down 1px. One per section, max.
 - **Secondary button** (`.share-btn`): ghost — 1px ivory border, transparent
   fill; hover inverts to ivory fill.
-- **Segmented control** (`.seg`): pill-adjacent buttons, `aria-pressed`;
-  selected state inverts (ivory fill, dark text). Min-height 44px. The
-  life-expectancy basis control lives in the calendar section behind the
-  "Change life expectancy" quiet link (progressive disclosure), never in the
-  hero form — activation asks for the birthdate alone.
+- **Segmented control** (`.seg`): pill-adjacent buttons; selected state
+  inverts (ivory fill, dark text). Min-height 44px. The life-expectancy
+  basis control is a `radiogroup` — `role="radio"` + `aria-checked` with a
+  roving tabindex, and arrow keys move (and make) the selection, since it's
+  one exclusive choice, not three toggles. It lives in the calendar section
+  behind the "Change life expectancy" quiet link (progressive disclosure),
+  never in the hero form — activation asks for the birthdate alone.
 - **Quiet link** (`.quiet-link`): amber underlined text-button for in-flow
   corrections ("Change life expectancy", "Born May 14, 1993 — edit") set at
-  small-print size; hover shifts to `--amber-hi`.
+  small-print size; hover shifts to `--amber-hi`. Visually inline, but
+  padding + negative margin give it a ≥44px touch target without moving the
+  surrounding small print.
 - **Legend chips** (`.legend button`): 999px radius pills with 8px color dot,
   `aria-pressed` toggles, min-height 44px (touch target); off state drops to
   `.55` text / `.16` border.
@@ -197,10 +205,14 @@ Scale (all fluid `clamp()`):
 ## Motion
 
 - **Calendar fill**: dots fill left-to-right over ~1.5s on first render — the
-  emotional core ("watching your life fill up"). Current-week dot pulses
-  continuously (rAF), pausing when off-screen. When the fill completes, if
-  the caption's numbers sit below the fold and the user hasn't scrolled on
-  their own, the page eases them into view once.
+  emotional core ("watching your life fill up"). The static field (unlived
+  dots, NOW marker, age axis) is pre-rendered to an offscreen canvas once;
+  each animation frame lays it down and paints only the newly-lived dots, so
+  the fill stays smooth on low-end phones. Current-week dot pulses
+  continuously (rAF); off-screen the loop is cancelled outright and restarts
+  when the grid scrolls back in. When the fill completes, if the caption's
+  numbers sit below the fold and the user hasn't scrolled on their own, the
+  page eases them into view once.
 - **Scroll reveals** (`[data-reveal]`): fade + 18px rise, 0.8s ease, via
   IntersectionObserver at 0.12 threshold. Content is visible by default in
   both markup and CSS; JS adds a `.pre-reveal` class in the same tick it
@@ -210,9 +222,10 @@ Scale (all fluid `clamp()`):
 - **Micro**: 0.15s ease on button/hover state changes; 1px translate on
   active.
 - **Reduced motion**: `prefers-reduced-motion: reduce` disables reveals; JS
-  checks `prefersReduced()` to skip the fill animation, pulse, and the
-  post-submit smooth scroll. Every animation has an instant/static
-  equivalent.
+  checks `prefersReduced()` to skip the fill animation, pulse (the ember
+  draws once, static — still burning, just steady), and the post-submit
+  smooth scroll, and re-checks if the preference flips mid-session. Every
+  animation has an instant/static equivalent.
 - No parallax, no bounce, no elastic. Motion only where meaning lives.
 
 ## Voice & Copy

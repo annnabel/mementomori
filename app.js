@@ -18,9 +18,20 @@
     }
   };
 
+  // Canvas can't read CSS custom properties, so the page tokens are mirrored
+  // here — one place, beside COLORS. Change these and :root in index.html
+  // together.
+  const INK = {
+    bg: '#0A0A0A',
+    fg: '#EDEAE4',
+    amber: '#D9863B',
+    fgA: (a) => `rgba(237,234,228,${a})`,
+    amberA: (a) => `rgba(217,134,59,${a})`,
+  };
+
   // Muted categorical hues, re-stepped and ordered so every adjacent pair
   // clears color-vision-deficiency separation (blue and lilac are kept apart).
-  const COLORS = { family: '#95C98C', friends: '#699FDE', partner: '#C99BEB', children: '#E0876F', coworkers: '#8A867F', alone: '#EDEAE4' };
+  const COLORS = { family: '#95C98C', friends: '#699FDE', partner: '#C99BEB', children: '#E0876F', coworkers: '#8A867F', alone: INK.fg };
   const LABELS = { family: 'Family', friends: 'Friends', partner: 'Partner', children: 'Children', coworkers: 'Coworkers', alone: 'Alone' };
   const SERIES_ORDER = ['family', 'friends', 'children', 'partner', 'coworkers', 'alone'];
 
@@ -42,7 +53,8 @@
   const DAY_MS = 864e5;
   const $ = (id) => document.getElementById(id);
   const fmt = (n) => n.toLocaleString('en-US');
-  const prefersReduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motionMq = matchMedia('(prefers-reduced-motion: reduce)');
+  const prefersReduced = () => motionMq.matches;
 
   // --- State ------------------------------------------------------------
   const state = {
@@ -160,18 +172,22 @@
       });
       // An instant jump (scrollbar drag, End key) can move a section from
       // below the viewport to above it between frames — the observer never
-      // fires and the section would stay hidden. Catch anything scrolled past.
+      // fires and the section would stay hidden. Catch anything scrolled
+      // past, and unbind once every section has revealed.
       if (revealIO.catchUp) return;
       revealIO.catchUp = true;
-      window.addEventListener('scroll', () => {
-        document.querySelectorAll('[data-reveal].pre-reveal').forEach((node) => {
+      const catchUp = () => {
+        const pending = document.querySelectorAll('[data-reveal].pre-reveal');
+        if (!pending.length) { window.removeEventListener('scroll', catchUp); return; }
+        pending.forEach((node) => {
           if (node.getBoundingClientRect().bottom < 0) {
             node.classList.add('in');
             node.classList.remove('pre-reveal');
             revealIO.unobserve(node);
           }
         });
-      }, { passive: true });
+      };
+      window.addEventListener('scroll', catchUp, { passive: true });
     }, 60);
   }
 
@@ -197,29 +213,38 @@
   // Same orientation as the share card: one column per year of age, 52 weeks
   // top to bottom — the page and the card someone shared must be the same
   // picture.
-  function drawGrid(n) {
-    const g = grid, ctx = g.ctx;
-    ctx.clearRect(0, 0, g.w, g.h);
+  // The static field — every unlived dot, the NOW marker, and the age axis —
+  // is pre-rendered once to an offscreen canvas. The fill animation then
+  // paints only the newly-lived dots each frame instead of re-arcing all
+  // ~4,300, which is the difference between a smooth fill and a janky one on
+  // a low-end phone at the product's most important moment.
+  function buildGridBase(g) {
+    const dpr = window.devicePixelRatio || 1;
+    const base = document.createElement('canvas');
+    base.width = Math.round(g.w * dpr);
+    base.height = Math.round(g.h * dpr);
+    const ctx = base.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const r = g.cell * 0.32;
     for (let i = 0; i < g.years * 52; i++) {
       if (i === g.current) continue;
       const x = Math.floor(i / 52) * g.cell + g.cell / 2;
       const y = g.top + (i % 52) * g.cell + g.cell / 2;
-      drawDot(ctx, x, y, r, i < n ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.13)');
+      drawDot(ctx, x, y, r, INK.fgA(.13));
     }
     // NOW marker above the ember's column (clamped inside the canvas) and an
     // age axis below — the same chrome the share card carries.
     const nowX = Math.floor(g.current / 52) * g.cell + g.cell / 2;
-    ctx.fillStyle = '#D9863B';
+    ctx.fillStyle = INK.amber;
     ctx.font = '600 11px Helvetica, Arial, sans-serif';
     ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
     ctx.fillText('NOW · ' + Math.min(state.age, g.years), Math.min(Math.max(nowX, 34), g.w - 34), 12);
-    ctx.strokeStyle = 'rgba(217,134,59,.9)'; ctx.lineWidth = 1.5;
+    ctx.strokeStyle = INK.amberA(.9); ctx.lineWidth = 1.5;
     ctx.beginPath(); ctx.moveTo(nowX, 17); ctx.lineTo(nowX, g.top - 7); ctx.stroke();
     const gridBottom = g.top + 52 * g.cell;
-    ctx.fillStyle = 'rgba(237,234,228,.55)';
+    ctx.fillStyle = INK.fgA(.55);
     ctx.font = '11px Helvetica, Arial, sans-serif';
-    ctx.strokeStyle = 'rgba(237,234,228,.3)'; ctx.lineWidth = 1;
+    ctx.strokeStyle = INK.fgA(.3); ctx.lineWidth = 1;
     ctx.textAlign = 'left';
     ctx.fillText('AGE', 1, gridBottom + 22);
     ctx.textAlign = 'center';
@@ -227,6 +252,25 @@
       const x = a * g.cell + g.cell / 2;
       ctx.beginPath(); ctx.moveTo(x, gridBottom + 4); ctx.lineTo(x, gridBottom + 10); ctx.stroke();
       ctx.fillText(String(a), x, gridBottom + 22);
+    }
+    return base;
+  }
+  // Draw lived dots [from, to). from === 0 lays the base down first.
+  function drawGridFill(from, to) {
+    const g = grid, ctx = g.ctx;
+    if (from === 0) {
+      ctx.clearRect(0, 0, g.w, g.h);
+      ctx.drawImage(g.base, 0, 0, g.w, g.h);
+    }
+    const r = g.cell * 0.32;
+    ctx.fillStyle = INK.fgA(.92);
+    for (let i = from; i < to; i++) {
+      if (i === g.current) continue;
+      const x = Math.floor(i / 52) * g.cell + g.cell / 2;
+      const y = g.top + (i % 52) * g.cell + g.cell / 2;
+      ctx.beginPath();
+      ctx.arc(x, y, r, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
   function startGrid(animate) {
@@ -243,39 +287,53 @@
     // Past expectancy the ember moves to the last cell — the current week is
     // always still burning, never "complete".
     const current = capped < total ? capped : total - 1;
-    grid = { ctx, cell, years, w, h, top, current, capped };
+    grid = { ctx, cell, years, w, h, top, current, capped, last: 0, fillDone: false };
+    grid.base = buildGridBase(grid);
 
     const dur = (animate && !prefersReduced()) ? 1500 : 0;
     const t0 = performance.now();
     const step = (t) => {
       const p = dur ? Math.min(1, (t - t0) / dur) : 1;
-      drawGrid(Math.floor(p * capped));
+      const n = Math.floor(p * capped);
+      drawGridFill(grid.last, n);
+      grid.last = n;
       if (p < 1) gridRaf = requestAnimationFrame(step);
-      else { startPulse(); if (dur) nudgeCaption(); }
+      else { grid.fillDone = true; startPulse(); if (dur) nudgeCaption(); }
     };
     gridRaf = requestAnimationFrame(step);
 
     if (vio) vio.disconnect();
     pulseVisible = true;
-    vio = new IntersectionObserver((es) => { pulseVisible = es[0].isIntersecting; });
+    // Off-screen, the pulse loop is cancelled outright — not left spinning
+    // with an early-return — and restarted when the grid scrolls back in.
+    vio = new IntersectionObserver((es) => {
+      pulseVisible = es[0].isIntersecting;
+      if (!pulseVisible) cancelAnimationFrame(pulseRaf);
+      else if (grid && grid.fillDone) startPulse();
+    });
     vio.observe(c);
   }
   function startPulse() {
     const g = grid;
     if (!g || g.current < 0) return;
+    cancelAnimationFrame(pulseRaf);
     const cx = Math.floor(g.current / 52) * g.cell + g.cell / 2;
     const cy = g.top + (g.current % 52) * g.cell + g.cell / 2;
     const rMax = g.cell * 0.46;
+    // Reduced motion: the ember still burns, it just holds steady.
+    if (prefersReduced()) {
+      drawDot(g.ctx, cx, cy, rMax * 0.85, INK.amber);
+      return;
+    }
     const loop = (t) => {
-      pulseRaf = requestAnimationFrame(loop);
-      if (!pulseVisible) return;
       const s = 0.62 + 0.38 * (0.5 + 0.5 * Math.sin(t / 480));
       g.ctx.clearRect(cx - rMax - 1, cy - rMax - 1, rMax * 2 + 2, rMax * 2 + 2);
       g.ctx.save();
-      g.ctx.shadowColor = 'rgba(217,134,59,.8)';
+      g.ctx.shadowColor = INK.amberA(.8);
       g.ctx.shadowBlur = 6 * s;
-      drawDot(g.ctx, cx, cy, rMax * s, '#D9863B');
+      drawDot(g.ctx, cx, cy, rMax * s, INK.amber);
       g.ctx.restore();
+      pulseRaf = requestAnimationFrame(loop);
     };
     pulseRaf = requestAnimationFrame(loop);
   }
@@ -339,8 +397,8 @@
     const Y = (p) => h - m.b - p / yMax * (h - m.t - m.b);
     ctx.clearRect(0, 0, w, h);
     ctx.font = '12px Helvetica, Arial, sans-serif';
-    ctx.fillStyle = 'rgba(237,234,228,.55)';
-    ctx.strokeStyle = 'rgba(237,234,228,.09)';
+    ctx.fillStyle = INK.fgA(.55);
+    ctx.strokeStyle = INK.fgA(.09);
     ctx.lineWidth = 1;
     for (let v = 0; v <= 50; v += 10) {
       const y = Y(v);
@@ -379,7 +437,7 @@
       for (const l of labs) {
         ctx.fillStyle = COLORS[l.k];
         ctx.beginPath(); ctx.arc(w - m.r + 9, l.y, 3, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(237,234,228,.75)';
+        ctx.fillStyle = INK.fgA(.75);
         ctx.fillText(LABELS[l.k], w - m.r + 16, l.y);
       }
       ctx.textBaseline = 'alphabetic';
@@ -395,12 +453,12 @@
     const isYou = state.submitted && state.age <= 80 && age === state.age;
     const atDataEdge = state.submitted && state.age > 80 && age === 80;
     if (state.submitted && !isYou && !atDataEdge && state.age >= 15) {
-      ctx.fillStyle = 'rgba(217,134,59,.6)';
+      ctx.fillStyle = INK.amberA(.6);
       ctx.beginPath(); ctx.arc(X(youAge), h - m.b, 3, 0, Math.PI * 2); ctx.fill();
     }
-    ctx.strokeStyle = '#D9863B'; ctx.lineWidth = 1.4;
+    ctx.strokeStyle = INK.amber; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(xi, m.t - 6); ctx.lineTo(xi, h - m.b); ctx.stroke();
-    ctx.fillStyle = '#D9863B';
+    ctx.fillStyle = INK.amber;
     ctx.beginPath(); ctx.arc(xi, m.t - 6, 3.5, 0, Math.PI * 2); ctx.fill();
     ctx.font = '600 11px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'alphabetic';
     const lbl = isYou ? 'YOU ARE HERE · ' + age
@@ -454,14 +512,14 @@
       btn.setAttribute('aria-pressed', String(!off));
       const dot = document.createElement('span');
       dot.className = 'dot';
-      dot.style.background = off ? 'rgba(237,234,228,.2)' : COLORS[k];
+      dot.style.background = off ? INK.fgA(.2) : COLORS[k];
       btn.appendChild(dot);
       btn.appendChild(document.createTextNode(LABELS[k]));
       btn.addEventListener('click', () => {
         state.hidden = { ...state.hidden, [k]: !state.hidden[k] };
         const nowOff = !!state.hidden[k];
         btn.setAttribute('aria-pressed', String(!nowOff));
-        dot.style.background = nowOff ? 'rgba(237,234,228,.2)' : COLORS[k];
+        dot.style.background = nowOff ? INK.fgA(.2) : COLORS[k];
         drawChart();
       });
       el.legend.appendChild(btn);
@@ -545,7 +603,7 @@
       const W = 1080, H = 1350, c = document.createElement('canvas');
       c.width = W; c.height = H;
       const ctx = c.getContext('2d');
-      ctx.fillStyle = '#0A0A0A'; ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = INK.bg; ctx.fillRect(0, 0, W, H);
 
       const years = lifespan();
       const total = totalWeeks();
@@ -565,16 +623,16 @@
       const gx = Math.round((W - gw) / 2), gy = 470;
 
       ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(237,234,228,.55)';
+      ctx.fillStyle = INK.fgA(.55);
       ctx.font = '600 24px Helvetica, Arial, sans-serif';
       ctx.letterSpacing = '7px';
       ctx.fillText('YOUR LIFE IN WEEKS', W / 2 + 4, 152);
       ctx.letterSpacing = '0px';
 
-      ctx.fillStyle = '#EDEAE4';
+      ctx.fillStyle = INK.fg;
       ctx.font = '300 58px Newsreader, Georgia, serif';
       ctx.fillText(`I’ve lived ${fmt(capped)} weeks.`, W / 2, 268);
-      ctx.fillStyle = 'rgba(237,234,228,.6)';
+      ctx.fillStyle = INK.fgA(.6);
       ctx.font = 'italic 300 33px Newsreader, Georgia, serif';
       ctx.fillText(bonus ? 'Bonus time. Every week is a gift.' : `About ${fmt(remain)} of my ~${fmt(total)} remain.`, W / 2, 332);
 
@@ -582,29 +640,29 @@
       // leaves the card at either end of a life.
       const emberCol = Math.floor(ember / 52);
       const nowX = gx + emberCol * cell + cell / 2;
-      ctx.fillStyle = '#D9863B';
+      ctx.fillStyle = INK.amber;
       ctx.font = '600 23px Helvetica, Arial, sans-serif';
       ctx.fillText('NOW · ' + Math.min(state.age, years), Math.min(Math.max(nowX, gx + 80), gx + gw - 80), gy - 36);
-      ctx.strokeStyle = 'rgba(217,134,59,.9)'; ctx.lineWidth = 2;
+      ctx.strokeStyle = INK.amberA(.9); ctx.lineWidth = 2;
       ctx.beginPath(); ctx.moveTo(nowX, gy - 26); ctx.lineTo(nowX, gy - 10); ctx.stroke();
 
       for (let i = 0; i < years * 52; i++) {
         if (i === ember) continue;
         const x = gx + Math.floor(i / 52) * cell + cell / 2;
         const y = gy + (i % 52) * cell + cell / 2;
-        ctx.fillStyle = i < capped ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.16)';
+        ctx.fillStyle = i < capped ? INK.fgA(.92) : INK.fgA(.16);
         ctx.beginPath(); ctx.arc(x, y, cell * 0.32, 0, Math.PI * 2); ctx.fill();
       }
       ctx.save();
-      ctx.shadowColor = 'rgba(217,134,59,.85)'; ctx.shadowBlur = 14;
-      ctx.fillStyle = '#D9863B';
+      ctx.shadowColor = INK.amberA(.85); ctx.shadowBlur = 14;
+      ctx.fillStyle = INK.amber;
       ctx.beginPath(); ctx.arc(nowX, gy + (ember % 52) * cell + cell / 2, cell * 0.5, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
 
       // Age axis under the grid decodes the columns.
-      ctx.fillStyle = 'rgba(237,234,228,.55)';
+      ctx.fillStyle = INK.fgA(.55);
       ctx.font = '22px Helvetica, Arial, sans-serif';
-      ctx.strokeStyle = 'rgba(237,234,228,.3)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = INK.fgA(.3); ctx.lineWidth = 1;
       ctx.textAlign = 'left';
       ctx.fillText('AGE', gx, gy + gh + 46);
       ctx.textAlign = 'center';
@@ -614,10 +672,10 @@
         ctx.fillText(String(a), x, gy + gh + 46);
       }
 
-      ctx.fillStyle = 'rgba(237,234,228,.6)';
+      ctx.fillStyle = INK.fgA(.6);
       ctx.font = 'italic 300 32px Newsreader, Georgia, serif';
       ctx.fillText('You have about 4,000 weeks. See yours.', W / 2, 1196);
-      ctx.fillStyle = '#D9863B';
+      ctx.fillStyle = INK.amber;
       ctx.font = '26px Helvetica, Arial, sans-serif';
       const u = new URL(shareUrl());
       ctx.fillText(u.host + u.pathname, W / 2, 1252);
@@ -687,6 +745,11 @@
     state.age = Math.floor(ageY);
     state.submitted = true;
 
+    // Focus will announce the caption; a live region would announce it a
+    // second time. Silence it for this update and restore it afterwards so
+    // later, unfocused updates (a basis change) still announce.
+    el.capMain.removeAttribute('aria-live');
+
     el.results.classList.add('shown');
     buildLegend();
     renderText();
@@ -702,6 +765,7 @@
     }
     // Hand screen readers and the keyboard the story, not the submit button.
     el.capMain.focus({ preventScroll: true });
+    setTimeout(() => el.capMain.setAttribute('aria-live', 'polite'), 150);
   }
 
   // --- Wiring -----------------------------------------------------------
@@ -717,14 +781,31 @@
   });
   el.form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
 
-  el.basisSeg.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-sex]');
-    if (!btn) return;
+  // The basis control is a radiogroup — one exclusive choice, not three
+  // toggles: roving tabindex, arrow keys move (and make) the selection.
+  function setBasis(btn) {
     state.sex = btn.getAttribute('data-sex');
     el.basisSeg.querySelectorAll('button').forEach((b) => {
-      b.setAttribute('aria-pressed', String(b === btn));
+      const on = b === btn;
+      b.setAttribute('aria-checked', String(on));
+      b.tabIndex = on ? 0 : -1;
     });
     if (state.submitted) { startGrid(false); renderText(); }
+  }
+  el.basisSeg.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-sex]');
+    if (btn) setBasis(btn);
+  });
+  el.basisSeg.addEventListener('keydown', (e) => {
+    const dir = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (dir == null) return;
+    const btns = [...el.basisSeg.querySelectorAll('button[data-sex]')];
+    const i = btns.indexOf(document.activeElement);
+    if (i < 0) return;
+    e.preventDefault();
+    const next = btns[(i + dir + btns.length) % btns.length];
+    next.focus();
+    setBasis(next);
   });
 
   el.basisToggle.addEventListener('click', () => {
@@ -746,5 +827,11 @@
     clearTimeout(resizeTimer);
     resizeTimer = setTimeout(() => { startGrid(false); startChart(); }, 120);
   });
+
+  // If the motion preference flips mid-session, redraw the grid so the
+  // ember starts or stops pulsing accordingly.
+  if (motionMq.addEventListener) {
+    motionMq.addEventListener('change', () => { if (state.submitted) startGrid(false); });
+  }
 
 })();
