@@ -71,6 +71,11 @@
   a { color: var(--amber); }
   a:hover { color: var(--amber-hi); }
 
+  button:focus-visible, a:focus-visible {
+    outline: 2px solid var(--amber);
+    outline-offset: 2px;
+  }
+
   input[type=date], input[type=text] { color-scheme: dark; }
   ::selection { background: var(--amber); color: var(--bg); }
 
@@ -193,6 +198,18 @@
     text-wrap: pretty;
   }
   .small-print { font-size: 12.5px; color: rgba(237,234,228,.55); margin: 0; }
+  .quiet-link {
+    background: none;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: var(--amber);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .quiet-link:hover { color: var(--amber-hi); }
+  .basis-seg { margin-top: 12px; }
 
   /* ---- Chart ---- */
   .chart-sec { padding: 96px 24px; max-width: 680px; margin: 0 auto; }
@@ -243,7 +260,7 @@
   .readout .ro { display: inline-flex; align-items: center; gap: 6px; }
   .readout .ro .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
   .readout .ro b { font-weight: 600; color: rgba(237,234,228,.92); }
-  .source { font-size: 13px; color: rgba(237,234,228,.55); margin: 12px 0 0; }
+  .source { font-size: 13px; color: rgba(237,234,228,.55); margin: 12px 0 0; max-width: 62ch; }
   .insight {
     font-family: var(--serif);
     font-size: clamp(19px, 4vw, 23px);
@@ -260,7 +277,7 @@
     font-style: italic;
     font-weight: 300;
     font-size: clamp(30px, 7vw, 58px);
-    line-height: 1.26;
+    line-height: 1.3;
     letter-spacing: -0.01em;
     max-width: 820px;
     margin: 0 auto;
@@ -305,7 +322,10 @@
     border-radius: 8px;
     font-size: 16px;
     font-weight: 600;
-    min-height: 20px;
+    min-height: 52px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     transition: background .15s ease;
   }
   .sms-link:hover { background: #FFFFFF; color: var(--bg); }
@@ -342,14 +362,6 @@
       <input class="field" id="dob" type="date" autocomplete="bday">
       <p class="micro">Stays on your device — we store nothing.</p>
 
-      <label class="lbl spaced" id="sex-label">Life expectancy basis</label>
-      <div class="seg" role="group" aria-labelledby="sex-label" id="sex-seg">
-        <button type="button" data-sex="f" aria-pressed="false">Female · 85.1 y</button>
-        <button type="button" data-sex="m" aria-pressed="false">Male · 81.1 y</button>
-        <button type="button" data-sex="" aria-pressed="true">Average</button>
-      </div>
-      <p class="micro">Life expectancy at birth in Australia: 81.1 years for males, 85.1 for females.</p>
-
       <p class="err hidden" id="err" role="alert"></p>
       <button class="primary" type="submit">Show me my weeks</button>
     </form>
@@ -361,15 +373,20 @@
     <!-- 2 · Calendar -->
     <section class="calendar" aria-labelledby="cap-main">
       <div id="grid-wrap"><canvas id="grid" aria-hidden="true"></canvas></div>
-      <p class="caption" id="cap-main" aria-live="polite"></p>
-      <p class="small-print" id="small-print"></p>
+      <p class="caption" id="cap-main" aria-live="polite" tabindex="-1"></p>
+      <p class="small-print" id="small-print"><span id="small-print-text"></span><button class="quiet-link" type="button" id="basis-toggle" aria-expanded="false" aria-controls="basis-seg">Change life expectancy</button> · <button class="quiet-link" type="button" id="edit-dob"></button></p>
+      <div class="seg basis-seg hidden" id="basis-seg" role="group" aria-label="Life expectancy basis">
+        <button type="button" data-sex="f" aria-pressed="false">Female · 85.1 years</button>
+        <button type="button" data-sex="m" aria-pressed="false">Male · 81.1 years</button>
+        <button type="button" data-sex="" aria-pressed="true">Average · 83.1 years</button>
+      </div>
     </section>
 
     <!-- 3 · Chart -->
     <section class="chart-sec" data-reveal aria-labelledby="chart-title">
       <h2 id="chart-title">Who fills the weeks that remain</h2>
       <div class="legend" id="legend" role="group" aria-label="Toggle who is shown on the chart"></div>
-      <p class="legend-hint">Drag the amber line to any age. Tap a person to show or hide their line.</p>
+      <p class="legend-hint">Drag the amber line to any age — the arrow keys work too. Tap a person to show or hide their line.</p>
       <div id="chart-wrap"><canvas id="chart" tabindex="0" role="slider" aria-orientation="horizontal" aria-valuemin="15" aria-valuemax="80" aria-label="Hours per day spent with different people, by age. Use the left and right arrow keys to change the age."></canvas></div>
       <p class="readout" id="readout"></p>
       <p class="source">U.S. data — American Time Use Survey, via Our World in Data. Hours per day, by age.</p>
@@ -387,7 +404,7 @@
     <section class="act" data-reveal aria-labelledby="act-prompt">
       <h2 id="act-prompt"></h2>
       <div class="col">
-        <input class="field" id="name" type="text" placeholder="A first name" aria-label="A first name" autocomplete="off">
+        <input class="field" id="name" type="text" placeholder="A first name" aria-label="A first name" autocomplete="off" maxlength="30">
         <a class="sms-link hidden" id="sms" href="#"></a>
         <p class="micro">Nothing is stored; everything stays on-device.</p>
         <p class="micro" id="week-next"></p>

@@ -75,7 +75,7 @@ Scale (all fluid `clamp()`):
 
 - Hero h1: `clamp(42px, 9vw, 76px)`, weight 400, line-height 1.04,
   letter-spacing −0.015em, `text-wrap: balance`
-- Reframe quote: `clamp(30px, 7vw, 58px)`, weight 300 italic, line-height 1.26
+- Reframe quote: `clamp(30px, 7vw, 58px)`, weight 300 italic, line-height 1.3
 - Section h2: `clamp(28px, 6vw, 38px)`, weight 400
 - Caption / insight: `clamp(19px, 4vw, 23px)`, line-height 1.4–1.45,
   `text-wrap: pretty`
@@ -89,28 +89,42 @@ Scale (all fluid `clamp()`):
 
 - **Field** (`.field`): `#141412` fill, 1px `#2C2B28` border, 8px radius,
   14×16px padding, 16px text (prevents iOS zoom). Focus:
-  `outline: 2px solid var(--amber); outline-offset: 1px`.
+  `outline: 2px solid var(--amber); outline-offset: 1px`. All buttons and
+  links share the amber `focus-visible` outline (2px, offset 2px) — one focus
+  language everywhere.
 - **Primary button** (`.primary`, `.sms-link`): ivory fill, near-black text,
   8px radius, min-height 52px, weight 600. Hover brightens to `#FFFFFF`;
   active nudges down 1px. One per section, max.
 - **Secondary button** (`.share-btn`): ghost — 1px ivory border, transparent
   fill; hover inverts to ivory fill.
 - **Segmented control** (`.seg`): pill-adjacent buttons, `aria-pressed`;
-  selected state inverts (ivory fill, dark text). Min-height 44px.
+  selected state inverts (ivory fill, dark text). Min-height 44px. The
+  life-expectancy basis control lives in the calendar section behind the
+  "Change life expectancy" quiet link (progressive disclosure), never in the
+  hero form — activation asks for the birthdate alone.
+- **Quiet link** (`.quiet-link`): amber underlined text-button for in-flow
+  corrections ("Change life expectancy", "Born May 14, 1993 — edit") set at
+  small-print size; hover shifts to `--amber-hi`.
 - **Legend chips** (`.legend button`): 999px radius pills with 8px color dot,
   `aria-pressed` toggles, min-height 44px (touch target); off state drops to
   `.55` text / `.16` border.
 - **Inline error** (`.err`): amber text, `role="alert"`, no alerts/toasts.
 - **Calendar grid**: canvas, 52 dots per row, dot radius = 0.32 × cell.
   Filled `rgba(237,234,228,.92)`, unlived `.13`, current week amber and
-  pulsing. `aria-hidden` with the caption as text equivalent.
+  pulsing. Past expectancy the ember clamps to the last cell (on the grid and
+  the share card alike) — the current week is always still burning, never
+  "complete". `aria-hidden` with the caption as text equivalent; the caption
+  takes focus (`tabindex="-1"`) after submit.
 - **Chart**: canvas in an unpadded `#chart-wrap` (sized to content width),
   amber vertical scrub line with amber age chip, `touch-action: pan-y`,
   `cursor: ew-resize`. The canvas is a focusable `role="slider"`
   (arrow keys / Home / End move the age; `aria-valuetext` reads the values).
-  Per-age values render in the DOM readout (`.readout`) below the canvas —
-  amber age, color-dotted series values, tabular numerals — never as an
-  in-canvas tooltip occluding the lines.
+  The scrub label says "YOU ARE HERE · N" only at the user's real age;
+  anywhere else it reads "AGE N" and a small amber tick holds the user's
+  position on the axis — precision earns the emotion, so the marker never
+  lies. Per-age values render in the DOM readout (`.readout`) below the
+  canvas in fixed series order — amber age, color-dotted series values,
+  tabular numerals — never as an in-canvas tooltip occluding the lines.
 - **Share card**: generated canvas, 1080×1350 (4:5 portrait). Same tokens:
   `#0A0A0A` ground, dot grid with amber current week, Newsreader 300 46px
   stat line in ivory, amber 26px URL line. The card is a first-class surface
@@ -134,7 +148,9 @@ Scale (all fluid `clamp()`):
 
 - **Calendar fill**: dots fill top-to-bottom over ~1.5s on first render — the
   emotional core ("watching your life fill up"). Current-week dot pulses
-  continuously (rAF), pausing when off-screen.
+  continuously (rAF), pausing when off-screen. When the fill completes, if
+  the caption's numbers sit below the fold and the user hasn't scrolled on
+  their own, the page eases them into view once.
 - **Scroll reveals** (`[data-reveal]`): fade + 18px rise, 0.8s ease, via
   IntersectionObserver at 0.12 threshold; content is visible-by-default
   markup, only enhanced by the transition.
@@ -153,7 +169,10 @@ Scale (all fluid `clamp()`):
 - No exclamation marks, no emoji, no hedging softeners.
 - Honesty artifacts are part of the design: on-chart "U.S. data" caveat,
   life-expectancy small print (Australian figures: F 85.1 / M 81.1 /
-  avg 83.1), "on average" qualifiers, "Stays on your device — we store
-  nothing."
+  avg 83.1, with "where this page was made" naming why Australia),
+  "on average" qualifiers, "Stays on your device — we store nothing."
+- Errors stay in the page's register — specific, unhurried, never blaming:
+  "Enter your birthdate to begin." / "That's more than 99 years ago — check
+  the year."
 - Over-expectancy users get "bonus time" framing; never negative remaining
   weeks, never an error state for being old.
