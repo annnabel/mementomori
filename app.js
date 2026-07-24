@@ -772,6 +772,16 @@
   }
 
   // --- Wiring -----------------------------------------------------------
+  // See the .kb-open rule in index.html: suspend scroll-snap for as long as
+  // any field holds focus, so a keyboard-driven viewport resize can't snap
+  // the page out from under a field mid-type.
+  document.addEventListener('focusin', (e) => {
+    if (e.target.matches('input, textarea')) document.documentElement.classList.add('kb-open');
+  });
+  document.addEventListener('focusout', (e) => {
+    if (e.target.matches('input, textarea')) document.documentElement.classList.remove('kb-open');
+  });
+
   el.dob.addEventListener('input', (e) => {
     clearErr();
     // Reformat only while the caret sits at the end; rewriting the value
