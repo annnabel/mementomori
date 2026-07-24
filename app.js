@@ -35,7 +35,9 @@
     age: 0,
     sex: '',          // '', 'm', 'f'
     name: '',
-    hidden: {},       // series key -> true when hidden
+    // Series key -> true when hidden. Alone, Partner, and Friends start on —
+    // the three the insight copy speaks to; the rest are a tap away.
+    hidden: { family: true, children: true, coworkers: true },
   };
 
   const lifespanExact = () => state.sex === 'm' ? 81.1 : state.sex === 'f' ? 85.1 : 83.1;
@@ -48,7 +50,7 @@
 
   // --- Elements ---------------------------------------------------------
   const el = {
-    form: $('birth-form'), dob: $('dob'), err: $('err'),
+    form: $('birth-form'), dob: $('dob'), err: $('err'), smsMsg: $('sms-msg'),
     basisSeg: $('basis-seg'), basisToggle: $('basis-toggle'), editDob: $('edit-dob'),
     heroSub: $('hero-sub'), results: $('results'),
     gridWrap: $('grid-wrap'), gridCanvas: $('grid'),
@@ -72,16 +74,39 @@
   // --- Scroll reveal ----------------------------------------------------
   let revealIO = null;
   function revealInit() {
+    // Sections are visible by default. The hidden pre-reveal state is applied
+    // here, in the same tick as observing, so any failure on this path leaves
+    // the arc readable instead of blank.
+    if (prefersReduced() || typeof IntersectionObserver !== 'function') return;
     setTimeout(() => {
       revealIO = revealIO || new IntersectionObserver((entries) => {
         entries.forEach((e) => {
-          if (e.isIntersecting) { e.target.classList.add('in'); revealIO.unobserve(e.target); }
+          if (e.isIntersecting) {
+            e.target.classList.add('in');
+            e.target.classList.remove('pre-reveal');
+            revealIO.unobserve(e.target);
+          }
         });
       }, { threshold: 0.12 });
       document.querySelectorAll('[data-reveal]:not([data-rv])').forEach((node) => {
         node.dataset.rv = '1';
+        node.classList.add('pre-reveal');
         revealIO.observe(node);
       });
+      // An instant jump (scrollbar drag, End key) can move a section from
+      // below the viewport to above it between frames — the observer never
+      // fires and the section would stay hidden. Catch anything scrolled past.
+      if (revealIO.catchUp) return;
+      revealIO.catchUp = true;
+      window.addEventListener('scroll', () => {
+        document.querySelectorAll('[data-reveal].pre-reveal').forEach((node) => {
+          if (node.getBoundingClientRect().bottom < 0) {
+            node.classList.add('in');
+            node.classList.remove('pre-reveal');
+            revealIO.unobserve(node);
+          }
+        });
+      }, { passive: true });
     }, 60);
   }
 
@@ -216,7 +241,7 @@
     const yMax = 9;
     const Y = (v) => h - m.b - v / yMax * (h - m.t - m.b);
     ctx.clearRect(0, 0, w, h);
-    ctx.font = '11px Helvetica, Arial, sans-serif';
+    ctx.font = '12px Helvetica, Arial, sans-serif';
     ctx.fillStyle = 'rgba(237,234,228,.55)';
     ctx.strokeStyle = 'rgba(237,234,228,.09)';
     ctx.lineWidth = 1;
@@ -246,18 +271,24 @@
     // Scrub line. "YOU ARE HERE" only when the line sits at the user's real
     // age — a scrubbed line is labeled by the age it shows, and the user's
     // own position keeps a tick on the axis so "you" never disappears.
+    // Past 80 the survey has no data, so "you" pins to the edge and the
+    // label says so instead of quietly dropping the user off the chart.
     const age = scrub, xi = X(age), idx = Math.min(65, Math.max(0, age - 15));
-    const isYou = state.submitted && age === state.age;
-    if (state.submitted && !isYou && state.age >= 15 && state.age <= 80) {
+    const youAge = Math.min(state.age, 80);
+    const isYou = state.submitted && state.age <= 80 && age === state.age;
+    const atDataEdge = state.submitted && state.age > 80 && age === 80;
+    if (state.submitted && !isYou && !atDataEdge && state.age >= 15) {
       ctx.fillStyle = 'rgba(217,134,59,.6)';
-      ctx.beginPath(); ctx.arc(X(state.age), h - m.b, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(X(youAge), h - m.b, 3, 0, Math.PI * 2); ctx.fill();
     }
     ctx.strokeStyle = '#D9863B'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(xi, m.t - 6); ctx.lineTo(xi, h - m.b); ctx.stroke();
     ctx.fillStyle = '#D9863B';
     ctx.beginPath(); ctx.arc(xi, m.t - 6, 3.5, 0, Math.PI * 2); ctx.fill();
-    ctx.font = '600 10px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'alphabetic';
-    const lbl = (isYou ? 'YOU ARE HERE · ' : 'AGE ') + age;
+    ctx.font = '600 11px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'alphabetic';
+    const lbl = isYou ? 'YOU ARE HERE · ' + age
+      : atDataEdge ? 'YOUR DATA ENDS HERE · 80+'
+      : 'AGE ' + age;
     const onRight = xi < w / 2;
     ctx.textAlign = onRight ? 'left' : 'right';
     ctx.fillText(lbl, xi + (onRight ? 8 : -8), m.t - 3);
@@ -291,7 +322,7 @@
       item.appendChild(val);
       frag.appendChild(item);
     }
-    if (!rows.length) frag.appendChild(document.createTextNode('All lines are hidden — tap a name above to bring one back.'));
+    if (!rows.length) frag.appendChild(document.createTextNode('All lines are hidden. Tap a name above to bring one back.'));
     el.readout.replaceChildren(frag);
     el.chartCanvas.setAttribute('aria-valuenow', String(age));
     el.chartCanvas.setAttribute('aria-valuetext', 'Age ' + age + ': ' + (rows.length
@@ -323,11 +354,13 @@
   }
 
   // --- Text values ------------------------------------------------------
+  // "At your age" anchors the sentence to the reader's real age, not the
+  // scrubbed one — the line never follows the scrub.
   function insightFor(a) {
-    return a < 20 ? 'Your time with parents and siblings is near its lifetime peak. It falls sharply from here.'
-      : a <= 35 ? 'Time with friends has already peaked. Time with a partner and children is what these decades are made of.'
-      : a <= 55 ? 'If you have children, your time with them is peaking now — and it will fall faster than you expect.'
-      : 'Time alone rises for the rest of life. What you do with it is the question.';
+    return a < 20 ? 'At your age, time with parents and siblings is near its lifetime peak. It falls sharply from here.'
+      : a <= 35 ? 'At your age, time with friends has already peaked. Time with a partner and children is what these decades are made of.'
+      : a <= 55 ? 'At your age, if you have children, your time with them is peaking now, and it will fall faster than you expect.'
+      : 'From your age on, time alone rises. What you do with it is the question.';
   }
   function sexBasisText() {
     return state.sex === 'm' ? '81.1 years (males)'
@@ -344,23 +377,48 @@
       ? 'You’re living in bonus time. Every week is a gift.'
       : `You have lived ${fmt(capped)} of your ~${fmt(total)} weeks. ${fmt(remain)} remain, on average.`;
     el.smallPrintText.textContent = `Based on life expectancy at birth in Australia, where this page was made: ${sexBasisText()}. `;
-    el.editDob.textContent = `Born ${new Date(state.birthVal + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} — edit`;
+    // The date renders in the reader's own locale; the surrounding sentence
+    // stays English, so the weekday below does too.
+    const b = new Date(state.birthVal + 'T00:00:00');
+    el.editDob.textContent = `Born ${b.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} — edit`;
     el.insight.textContent = insightFor(state.age);
     el.actPrompt.textContent = bonus
       ? 'Who came to mind just now?'
       : `You have ${fmt(remain)} weeks left. Who came to mind just now?`;
-    el.weekNext.textContent = `Your week #${fmt(state.lived + 1)} starts Monday.`;
+    // Week #lived+1 is the one burning now (the ember); the next one starts
+    // on the birth weekday, not a generic Monday.
+    el.weekNext.textContent = `Your week #${fmt(state.lived + 2)} starts ${b.toLocaleDateString('en-US', { weekday: 'long' })}.`;
   }
 
   // --- Section 5: SMS + share ------------------------------------------
+  const SMS_BODY = 'Hey — was thinking about you. Free this week?';
   function updateSms() {
     const has = !!state.name.trim();
     el.sms.classList.toggle('hidden', !has);
+    el.smsMsg.classList.add('hidden');
     if (has) {
       el.sms.textContent = `Text ${state.name} now`;
-      el.sms.href = 'sms:?&body=' + encodeURIComponent('Hey — was thinking about you. Free this week?');
+      el.sms.href = 'sms:?&body=' + encodeURIComponent(SMS_BODY);
     }
   }
+  // Desktops mostly have no sms: handler; a click there must not die
+  // silently at the arc's one conversion moment. Same fallback shape as
+  // the share button: put the draft on the clipboard and say so.
+  function likelyHandlesSms() {
+    return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+  }
+  el.sms.addEventListener('click', async (e) => {
+    if (likelyHandlesSms()) return;
+    e.preventDefault();
+    const name = state.name.trim();
+    try {
+      await navigator.clipboard.writeText(SMS_BODY);
+      el.smsMsg.textContent = `Message copied — text ${name} from your phone.`;
+    } catch (err) {
+      el.smsMsg.textContent = `No messaging app here. Text ${name} from your phone: “${SMS_BODY}”`;
+    }
+    el.smsMsg.classList.remove('hidden');
+  });
   function shareUrl() {
     const u = new URL(location.href);
     u.search = '?age=' + state.age;
@@ -385,14 +443,22 @@
         ctx.fillStyle = i === ember ? '#D9863B' : i < capped ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.14)';
         ctx.beginPath(); ctx.arc(x, y, i === ember ? cell * 0.46 : cell * 0.32, 0, Math.PI * 2); ctx.fill();
       }
+      // Center the text block in the band below the grid (no dead bottom
+      // third on shorter lifespans), and let the card invite, not just state.
+      const gridBottom = gy + rows * cell;
+      const blockH = 118;
+      const y0 = gridBottom + (H - gridBottom - blockH) / 2 + 34;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#EDEAE4';
       ctx.font = '300 46px Newsreader, Georgia, serif';
-      ctx.fillText(`I’ve lived ${fmt(capped)} of my ~${fmt(total)} weeks`, W / 2, gy + rows * cell + 92);
+      ctx.fillText(`I’ve lived ${fmt(capped)} of my ~${fmt(total)} weeks`, W / 2, y0);
+      ctx.fillStyle = 'rgba(237,234,228,.6)';
+      ctx.font = 'italic 300 28px Newsreader, Georgia, serif';
+      ctx.fillText('You have about 4,000 weeks. See yours.', W / 2, y0 + 56);
       ctx.fillStyle = '#D9863B';
       ctx.font = '26px Helvetica, Arial, sans-serif';
       const u = new URL(shareUrl());
-      ctx.fillText(u.host + u.pathname, W / 2, gy + rows * cell + 148);
+      ctx.fillText(u.host + u.pathname, W / 2, y0 + 118);
       c.toBlob(res, 'image/png');
     });
   }
@@ -413,7 +479,7 @@
       cardUrl = URL.createObjectURL(blob);
       showShareMsg('Link copied. ', { href: cardUrl, label: 'Download the card image', download: 'your-life-in-weeks.png' });
     } catch (e) {
-      showShareMsg('Couldn’t share here — try on your phone.');
+      showShareMsg('Couldn’t share here. Try on your phone.');
     }
   }
   function showShareMsg(msg, link) {
@@ -432,10 +498,12 @@
   function showErr(msg) {
     el.err.textContent = msg;
     el.err.classList.remove('hidden');
+    el.dob.setAttribute('aria-invalid', 'true');
   }
   function clearErr() {
     el.err.textContent = '';
     el.err.classList.add('hidden');
+    el.dob.removeAttribute('aria-invalid');
   }
   function submit() {
     const v = state.birthVal;

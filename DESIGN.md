@@ -111,24 +111,39 @@ Scale (all fluid `clamp()`):
 - **Inline error** (`.err`): amber text, `role="alert"`, no alerts/toasts.
 - **Calendar grid**: canvas, 52 dots per row, dot radius = 0.32 × cell.
   Filled `rgba(237,234,228,.92)`, unlived `.13`, current week amber and
-  pulsing. Past expectancy the ember clamps to the last cell (on the grid and
-  the share card alike) — the current week is always still burning, never
+  pulsing. A small-print key sits above the grid ("One dot per week. The
+  amber dot is this week.") so the metaphor is decoded before the fill
+  finishes. Past expectancy the ember clamps to the last cell (on the grid
+  and the share card alike) — the current week is always still burning, never
   "complete". `aria-hidden` with the caption as text equivalent; the caption
   takes focus (`tabindex="-1"`) after submit.
 - **Chart**: canvas in an unpadded `#chart-wrap` (sized to content width),
   amber vertical scrub line with amber age chip, `touch-action: pan-y`,
   `cursor: ew-resize`. The canvas is a focusable `role="slider"`
   (arrow keys / Home / End move the age; `aria-valuetext` reads the values).
-  The scrub label says "YOU ARE HERE · N" only at the user's real age;
-  anywhere else it reads "AGE N" and a small amber tick holds the user's
-  position on the axis — precision earns the emotion, so the marker never
-  lies. Per-age values render in the DOM readout (`.readout`) below the
-  canvas in fixed series order — amber age, color-dotted series values,
-  tabular numerals — never as an in-canvas tooltip occluding the lines.
+  Three series start on — Alone, Partner, Friends, the ones the insight copy
+  speaks to — and the rest are a chip-tap away, so the fold stays under the
+  4-option working-memory line. The one-instruction hint ("Drag the amber
+  line to any age.") sits after the chart. The scrub label says
+  "YOU ARE HERE · N" only at the user's real age; anywhere else it reads
+  "AGE N" and a small amber tick holds the user's position on the axis —
+  precision earns the emotion, so the marker never lies. The survey ends at
+  80: the caveat says so, and for users past 80 the scrub pins to the edge
+  with "YOUR DATA ENDS HERE · 80+" instead of dropping "you" off the chart.
+  Per-age values render in the DOM readout (`.readout`) below the canvas in
+  fixed series order — amber age, color-dotted series values, tabular
+  numerals — never as an in-canvas tooltip occluding the lines.
+- **Text-someone CTA** (`.sms-link`): `sms:` draft on platforms that have a
+  handler; elsewhere the click copies the drafted message and a `role=status`
+  microcopy line says "Message copied — text {name} from your phone." The
+  conversion moment never fails silently.
 - **Share card**: generated canvas, 1080×1350 (4:5 portrait). Same tokens:
   `#0A0A0A` ground, dot grid with amber current week, Newsreader 300 46px
-  stat line in ivory, amber 26px URL line. The card is a first-class surface
-  — it must look like the page.
+  stat line in ivory, an italic Newsreader invite line
+  ("You have about 4,000 weeks. See yours.") at `.6` ivory, amber 26px URL
+  line — the block vertically centered in the band below the grid. The card
+  is a first-class surface — it must look like the page, and it invites, not
+  just states.
 - **Link-preview card** (`og.png`, 1200×630) and favicon (inline SVG amber
   ember on near-black; `apple-touch-icon.png`): same tokens as the page, so
   the share loop looks like the product at every hop.
@@ -152,8 +167,11 @@ Scale (all fluid `clamp()`):
   the caption's numbers sit below the fold and the user hasn't scrolled on
   their own, the page eases them into view once.
 - **Scroll reveals** (`[data-reveal]`): fade + 18px rise, 0.8s ease, via
-  IntersectionObserver at 0.12 threshold; content is visible-by-default
-  markup, only enhanced by the transition.
+  IntersectionObserver at 0.12 threshold. Content is visible by default in
+  both markup and CSS; JS adds a `.pre-reveal` class in the same tick it
+  starts observing, so a failed enhancement path can never blank a section.
+  A passive scroll listener catches sections jumped past between frames
+  (scrollbar drag, End key) and reveals them instantly.
 - **Micro**: 0.15s ease on button/hover state changes; 1px translate on
   active.
 - **Reduced motion**: `prefers-reduced-motion: reduce` disables reveals; JS
@@ -167,10 +185,21 @@ Scale (all fluid `clamp()`):
 - Declarative, exact, unhurried: "You have lived **1,672** of your ~4,326
   weeks." Numbers are `toLocaleString`-formatted.
 - No exclamation marks, no emoji, no hedging softeners.
-- Honesty artifacts are part of the design: on-chart "U.S. data" caveat,
-  life-expectancy small print (Australian figures: F 85.1 / M 81.1 /
-  avg 83.1, with "where this page was made" naming why Australia),
-  "on average" qualifiers, "Stays on your device — we store nothing."
+- Honesty artifacts are part of the design: on-chart "U.S. data" caveat with
+  "The data ends at age 80", life-expectancy small print (Australian figures:
+  F 85.1 / M 81.1 / avg 83.1, with "where this page was made" naming why
+  Australia), "on average" qualifiers, "Stays on your device — we store
+  nothing."
+- The privacy sentence repeats **verbatim** in the hero and the act section —
+  repetition reads as a promise; variation reads as copywriting.
+- Precision details: the "Born …" date renders in the reader's own locale;
+  the week line names the birth weekday and the *next* week's number
+  ("Your week #1,734 starts Friday." — week #lived+1 is the ember, already
+  burning); the insight line opens "At your age," so it can't be misread as
+  describing a scrubbed age.
+- Em-dashes are brand voice but rationed: kept where they're signature (the
+  privacy line, "Born … — edit", source and quote attributions), replaced
+  with periods, commas, or colons elsewhere.
 - Errors stay in the page's register — specific, unhurried, never blaming:
   "Enter your birthdate to begin." / "That's more than 99 years ago — check
   the year."
