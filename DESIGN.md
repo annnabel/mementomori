@@ -16,7 +16,8 @@ muted categorical hues.
 
 - **Register**: brand (the page is the product)
 - **Theme**: dark only — no light mode; `color-scheme: dark` on form controls
-- **Layout**: single column, max-width 680px, long scroll, one idea per fold
+- **Layout**: single column, max-width 680px (760px hero, 900px quote),
+  long scroll, one idea per fold — two of them full-viewport
 
 ## Color Palette
 
@@ -80,14 +81,21 @@ Newsreader is the committed brand voice (identity-preservation; don't swap it
 on variants). The pairing is a deliberate contrast axis: high-contrast optical
 serif for meaning, neutral grotesque for mechanics.
 
-Scale (all fluid `clamp()`):
+Scale (all fluid `clamp()` — the scale is deliberately monumental: the
+emotional peaks carry 3–4× jumps over body size, not 1.5×):
 
-- Hero h1: `clamp(42px, 9vw, 76px)`, weight 400, line-height 1.04,
-  letter-spacing −0.015em, `text-wrap: balance`
-- Reframe quote: `clamp(30px, 7vw, 58px)`, weight 300 italic, line-height 1.3
-- Section h2: `clamp(28px, 6vw, 38px)`, weight 400
-- Caption / insight: `clamp(19px, 4vw, 23px)`, line-height 1.4–1.45,
-  `text-wrap: pretty`
+- Hero h1: `clamp(42px, 9.5vw, 92px)`, weight 400, line-height 1.02,
+  letter-spacing −0.015em, `text-wrap: balance`. Its full stop is not a
+  period glyph but **the ember itself** — an inline amber dot (`.13em`,
+  soft glow, slow 2.6s pulse) with a screen-reader-only "." beside it.
+  The current week burns from the first glance; amber's one job, kept.
+- Reframe quote: `clamp(32px, 8vw, 88px)`, weight 300 italic,
+  line-height 1.24 — typography as monument, in a full-viewport section
+- Section h2: `clamp(30px, 7vw, 52px)`, weight 400
+- Caption: `clamp(22px, 5vw, 30px)`, line-height 1.35; insight:
+  `clamp(21px, 4.5vw, 27px)`, line-height 1.45; both `text-wrap: pretty`.
+  In the caption and act h2, the week counts are `<b>` at weight 500 —
+  the numbers are the payload and carry the full available weight.
 - Body/UI: 16px fields and buttons; 13px uppercase labels
   (letter-spacing .08em), sources, hints, and chart readout; 12.5px microcopy
   (nothing below 12.5px in HTML text)
@@ -179,8 +187,8 @@ Scale (all fluid `clamp()`):
   card's grid runs sideways — one column per year of age, 52 weeks top to
   bottom — so a life reads left to right like a timeline and the lived share
   is legible at arm's length. Top to bottom: letterspaced sans eyebrow
-  ("YOUR LIFE IN WEEKS", `.55` ivory), Newsreader 300 58px stat
-  ("I've lived 1,408 weeks."), italic 33px subline ("About 2,908 of my
+  ("YOUR LIFE IN WEEKS", `.55` ivory), Newsreader 300 74px stat
+  ("I've lived 1,408 weeks."), italic 34px subline ("About 2,908 of my
   ~4,316 remain." — or the bonus-time line), an amber "NOW · age" marker
   ticked to the ember's column, the grid (glowing amber ember, `.16`
   unlived dots), an AGE 20/40/60/80 axis, the italic invite line
@@ -193,11 +201,13 @@ Scale (all fluid `clamp()`):
 
 ## Layout & Spacing
 
-- Containers: 680px max (hero, calendar, chart, act), 820px (quote).
-  Side padding 24px.
+- Containers: 680px max (calendar, chart, act), 760px (hero, for the
+  monumental h1), 900px (quote). Side padding 24px.
 - Vertical rhythm is deliberately uneven — it breathes where the emotion
-  peaks: hero fills `92svh`; chart section 96px padding; reframe 140px;
-  act ends with 160px bottom padding.
+  peaks: the hero and the reframe each own a full viewport (`100svh`);
+  chart and act sections pad with `clamp(96px, 15vh, 160px)`; the act ends
+  with 180px bottom padding. Two full-viewport moments bracket the arc:
+  the promise (hero) and the reframe (Seneca).
 - Forms and CTA stacks cap at 380px wide with 10–12px gaps.
 - Radius scale: 8px (fields, buttons), 999px (chips). No cards, no panels —
   content sits directly on the dark ground.
@@ -219,13 +229,20 @@ Scale (all fluid `clamp()`):
   starts observing, so a failed enhancement path can never blank a section.
   A passive scroll listener catches sections jumped past between frames
   (scrollbar drag, End key) and reveals them instantly.
+- **Hero entrance** (the one signature page-load moment, once per load):
+  h1, sub, and form rise 22px and fade in over 0.9s on an expo-out curve
+  (`cubic-bezier(.16,1,.3,1)`), staggered 0 / 120ms / 240ms. Pure CSS
+  (`rise-in` keyframes ending at opacity 1), so a failed script can never
+  strand the hero hidden. The h1's ember full stop pulses continuously
+  (2.6s ease-in-out scale + opacity).
 - **Micro**: 0.15s ease on button/hover state changes; 1px translate on
   active.
-- **Reduced motion**: `prefers-reduced-motion: reduce` disables reveals; JS
-  checks `prefersReduced()` to skip the fill animation, pulse (the ember
-  draws once, static — still burning, just steady), and the post-submit
-  smooth scroll, and re-checks if the preference flips mid-session. Every
-  animation has an instant/static equivalent.
+- **Reduced motion**: `prefers-reduced-motion: reduce` disables reveals,
+  the hero entrance, and the hero ember's CSS pulse (it renders static —
+  still burning, just steady); JS checks `prefersReduced()` to skip the
+  fill animation, canvas pulse, and the post-submit smooth scroll, and
+  re-checks if the preference flips mid-session. Every animation has an
+  instant/static equivalent.
 - No parallax, no bounce, no elastic. Motion only where meaning lives.
 
 ## Voice & Copy
