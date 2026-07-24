@@ -1,0 +1,4 @@
+# Impeccable live-preview runtime state (port/PID; regenerated per session)
+.impeccable/live/server.json
+.impeccable/live/sessions/
+.impeccable/live/annotations/
