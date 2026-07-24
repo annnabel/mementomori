@@ -296,6 +296,24 @@
     text-wrap: pretty;
   }
 
+  /* ---- Next cue ---- */
+  .next-cue { display: flex; justify-content: center; margin-top: 48px; }
+  .next-cue button {
+    background: none;
+    border: none;
+    padding: 12px;
+    min-width: 44px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(237,234,228,.4);
+    cursor: pointer;
+    transition: color .2s ease;
+  }
+  .next-cue button:hover { color: rgba(237,234,228,.75); }
+  .next-cue svg { width: 20px; height: 20px; display: block; }
+
   /* ---- Reframe ---- */
   .reframe { padding: 140px 24px; text-align: center; }
   .reframe blockquote {
@@ -407,10 +425,13 @@
         <button type="button" role="radio" data-sex="m" aria-checked="false" tabindex="-1">Male · 81.1 years</button>
         <button type="button" role="radio" data-sex="" aria-checked="true">Average · 83.1 years</button>
       </div>
+      <div class="next-cue">
+        <button type="button" class="next-cue-btn" data-next="chart-sec" aria-label="Continue to who fills the weeks that remain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
     </section>
 
     <!-- 3 · Chart -->
-    <section class="chart-sec" data-reveal aria-labelledby="chart-title">
+    <section class="chart-sec" id="chart-sec" data-reveal aria-labelledby="chart-title">
       <h2 id="chart-title">Who fills the weeks that remain</h2>
       <div class="legend" id="legend" role="group" aria-label="Toggle who is shown on the chart"></div>
       <div id="chart-wrap"><canvas id="chart" tabindex="0" role="slider" aria-orientation="horizontal" aria-valuemin="15" aria-valuemax="80" aria-label="Share of the waking day spent with different people, by age. Use the left and right arrow keys to change the age."></canvas></div>
@@ -418,17 +439,23 @@
       <p class="readout" id="readout"></p>
       <p class="source">U.S. data — American Time Use Survey, via Our World in Data. Shown as a share of a 16-hour waking day. Time with two people at once counts in both lines, so the shares don’t sum to 100%. Lines are lightly smoothed. The data ends at age 80.</p>
       <p class="insight" id="insight"></p>
+      <div class="next-cue">
+        <button type="button" class="next-cue-btn" data-next="reframe-sec" aria-label="Continue to the reframe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
     </section>
 
     <!-- 4 · Reframe -->
-    <section class="reframe" data-reveal>
+    <section class="reframe" id="reframe-sec" data-reveal>
       <blockquote>&ldquo;It is not that we have a short time to live, but that we waste a lot of it.&rdquo;</blockquote>
       <p class="attr">Seneca — On the Shortness of Life</p>
       <p class="wealth">Time Wealth is using the awareness of time&rsquo;s impermanence to spark action: the power to direct your attention to what truly matters, and control over how, where, and with whom you spend your time. <span class="fade">(After Sahil Bloom, The 5 Types of Wealth.)</span></p>
+      <div class="next-cue">
+        <button type="button" class="next-cue-btn" data-next="act-sec" aria-label="Continue to name someone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
     </section>
 
     <!-- 5 · Act + share -->
-    <section class="act" data-reveal aria-labelledby="act-prompt">
+    <section class="act" id="act-sec" data-reveal aria-labelledby="act-prompt">
       <h2 id="act-prompt"></h2>
       <div class="col">
         <input class="field" id="name" type="text" placeholder="A first name" aria-label="A first name" autocomplete="off" maxlength="30">
