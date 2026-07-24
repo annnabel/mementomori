@@ -18,9 +18,26 @@
     }
   };
 
-  const COLORS = { family: '#93B79B', friends: '#7FA3C9', partner: '#B393C9', children: '#C98F93', coworkers: '#8A867F', alone: '#EDEAE4' };
+  // Muted categorical hues, re-stepped and ordered so every adjacent pair
+  // clears color-vision-deficiency separation (blue and lilac are kept apart).
+  const COLORS = { family: '#95C98C', friends: '#699FDE', partner: '#C99BEB', children: '#E0876F', coworkers: '#8A867F', alone: '#EDEAE4' };
   const LABELS = { family: 'Family', friends: 'Friends', partner: 'Partner', children: 'Children', coworkers: 'Coworkers', alone: 'Alone' };
-  const SERIES_ORDER = ['family', 'friends', 'partner', 'children', 'coworkers', 'alone'];
+  const SERIES_ORDER = ['family', 'friends', 'children', 'partner', 'coworkers', 'alone'];
+
+  // The chart reads as a share of the waking day (16h), not raw hours —
+  // "14% of your waking day" lands harder than "2.3h". Lines are lightly
+  // smoothed (1-2-1 kernel) so the survey jitter doesn't hide the shape.
+  const WAKING_HOURS = 16;
+  const SMOOTH = {};
+  for (const k of Object.keys(TIMEUSE.series)) {
+    const s = TIMEUSE.series[k];
+    SMOOTH[k] = s.map((v, i) => (s[Math.max(0, i - 1)] + 2 * v + s[Math.min(s.length - 1, i + 1)]) / 4);
+  }
+  const pctOf = (v) => v / WAKING_HOURS * 100;
+  const fmtPct = (v) => {
+    const p = pctOf(v);
+    return (p < 9.5 ? p.toFixed(1) : String(Math.round(p))) + '%';
+  };
 
   const DAY_MS = 864e5;
   const $ = (id) => document.getElementById(id);
@@ -68,8 +85,34 @@
       el.heroSub.textContent = `Your friend has lived about ${fmt(Math.round(a * 365.25 / 7))} weeks. See yours.`;
     }
   })();
-  el.dob.max = new Date().toISOString().slice(0, 10);
-  el.dob.min = new Date(Date.now() - 100 * 365.25 * DAY_MS).toISOString().slice(0, 10);
+  // --- Birthdate parsing (the field is free text — a native date picker
+  //     makes people scroll decades on mobile; typing is faster) -----------
+  const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  const monthFrom = (tok) => MONTH_NAMES.findIndex((n) => n.startsWith(tok)) + 1;
+  const fullYear = (y) => y >= 100 ? y : y + (y <= new Date().getFullYear() % 100 ? 2000 : 1900);
+  // Accepts "24 July 1999", "July 24 1999", "24/7/1999", "1999-07-24",
+  // "24.07.99", "24071999". Bare numbers are read day-first (this page is
+  // Australian); an impossible day-first date falls back to month-first.
+  function parseDob(raw) {
+    const s = raw.trim().toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, '$1').replace(/,/g, ' ').replace(/\s+/g, ' ');
+    let m, d, mo, y;
+    if ((m = s.match(/^(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})$/))) {
+      y = +m[1]; mo = +m[2]; d = +m[3];
+    } else if ((m = s.match(/^(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{2,4})$/))) {
+      d = +m[1]; mo = +m[2]; y = fullYear(+m[3]);
+      if (mo > 12 && d <= 12) { const t = d; d = mo; mo = t; }
+    } else if ((m = s.match(/^(\d{1,2}) ([a-z]{3,9})\.? (\d{2,4})$/))) {
+      d = +m[1]; mo = monthFrom(m[2]); y = fullYear(+m[3]);
+    } else if ((m = s.match(/^([a-z]{3,9})\.? (\d{1,2}) (\d{2,4})$/))) {
+      mo = monthFrom(m[1]); d = +m[2]; y = fullYear(+m[3]);
+    } else if (/^\d{8}$/.test(s)) {
+      d = +s.slice(0, 2); mo = +s.slice(2, 4); y = +s.slice(4);
+    } else return null;
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    const date = new Date(y, mo - 1, d);
+    if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
+    return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  }
 
   // --- Scroll reveal ----------------------------------------------------
   let revealIO = null;
@@ -207,7 +250,14 @@
     if (!c || !c.parentElement) return;
     const w = c.parentElement.clientWidth;
     const h = Math.min(360, Math.max(260, w * 0.62));
-    chart = { ctx: setupCanvas(c, w, h), w, h, m: { l: 30, r: 14, t: 30, b: 26 } };
+    const ctx = setupCanvas(c, w, h);
+    // On wider viewports each line gets a direct label at its right end, so
+    // identity never rides on color alone; reserve the margin for the longest
+    // label once so toggling series never reflows the plot.
+    ctx.font = '11px Helvetica, Arial, sans-serif';
+    const direct = w >= 480;
+    const labelW = direct ? Math.max(...SERIES_ORDER.map((k) => ctx.measureText(LABELS[k]).width)) : 0;
+    chart = { ctx, w, h, direct, m: { l: 42, r: direct ? Math.ceil(labelW) + 24 : 14, t: 30, b: 26 } };
     if (scrub == null) scrub = Math.min(80, Math.max(15, state.age));
     drawChart();
 
@@ -238,35 +288,55 @@
     if (!chart) return;
     const { ctx, w, h, m } = chart, D = TIMEUSE;
     const X = (age) => m.l + (age - 15) / 65 * (w - m.l - m.r);
-    const yMax = 9;
-    const Y = (v) => h - m.b - v / yMax * (h - m.t - m.b);
+    const yMax = 56; // percent of the waking day; Alone tops out near 50%
+    const Y = (p) => h - m.b - p / yMax * (h - m.t - m.b);
     ctx.clearRect(0, 0, w, h);
     ctx.font = '12px Helvetica, Arial, sans-serif';
     ctx.fillStyle = 'rgba(237,234,228,.55)';
     ctx.strokeStyle = 'rgba(237,234,228,.09)';
     ctx.lineWidth = 1;
-    for (let v = 0; v <= 8; v += 2) {
+    for (let v = 0; v <= 50; v += 10) {
       const y = Y(v);
       ctx.beginPath(); ctx.moveTo(m.l, y); ctx.lineTo(w - m.r, y); ctx.stroke();
       ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
-      ctx.fillText(v + 'h', m.l - 7, y);
+      ctx.fillText(v + '%', m.l - 7, y);
     }
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     for (let a = 20; a <= 80; a += 20) ctx.fillText(String(a), X(a), h - m.b + 8);
 
-    ctx.lineWidth = 1.6; ctx.lineJoin = 'round';
-    for (const k of SERIES_ORDER) {
-      if (state.hidden[k]) continue;
+    ctx.lineWidth = 2; ctx.lineJoin = 'round';
+    const visible = SERIES_ORDER.filter((k) => !state.hidden[k]);
+    for (const k of visible) {
       ctx.strokeStyle = COLORS[k];
-      ctx.globalAlpha = k === 'alone' ? 0.95 : 0.85;
+      ctx.globalAlpha = k === 'alone' ? 0.95 : 0.9;
       ctx.beginPath();
       D.ages.forEach((a, i) => {
-        const x = X(a), y = Y(D.series[k][i]);
+        const x = X(a), y = Y(pctOf(SMOOTH[k][i]));
         i ? ctx.lineTo(x, y) : ctx.moveTo(x, y);
       });
       ctx.stroke();
     }
     ctx.globalAlpha = 1;
+
+    // Direct labels at each line's right end, nudged apart when lines land
+    // close together (text in ink, a color dot carries the identity).
+    if (chart.direct && visible.length) {
+      const li = D.ages.length - 1;
+      const labs = visible.map((k) => ({ k, y: Y(pctOf(SMOOTH[k][li])) })).sort((a, b) => a.y - b.y);
+      for (let i = 1; i < labs.length; i++) labs[i].y = Math.max(labs[i].y, labs[i - 1].y + 14);
+      for (let i = labs.length - 1; i >= 0; i--) {
+        labs[i].y = Math.min(labs[i].y, i === labs.length - 1 ? h - m.b - 5 : labs[i + 1].y - 14);
+      }
+      ctx.font = '11px Helvetica, Arial, sans-serif';
+      ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      for (const l of labs) {
+        ctx.fillStyle = COLORS[l.k];
+        ctx.beginPath(); ctx.arc(w - m.r + 9, l.y, 3, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = 'rgba(237,234,228,.75)';
+        ctx.fillText(LABELS[l.k], w - m.r + 16, l.y);
+      }
+      ctx.textBaseline = 'alphabetic';
+    }
 
     // Scrub line. "YOU ARE HERE" only when the line sits at the user's real
     // age — a scrubbed line is labeled by the age it shows, and the user's
@@ -298,9 +368,7 @@
     // keyboard-reachable text.
     // Stable legend order (not sorted by value) so a tracked series never
     // hops position while scrubbing.
-    const rows = SERIES_ORDER
-      .filter((k) => !state.hidden[k])
-      .map((k) => ({ k, v: D.series[k][idx] }));
+    const rows = visible.map((k) => ({ k, v: SMOOTH[k][idx] }));
     renderReadout(age, rows);
   }
   function renderReadout(age, rows) {
@@ -316,7 +384,7 @@
       dot.className = 'dot';
       dot.style.background = COLORS[r.k];
       const val = document.createElement('b');
-      val.textContent = r.v.toFixed(1) + 'h';
+      val.textContent = fmtPct(r.v);
       item.appendChild(dot);
       item.appendChild(document.createTextNode(LABELS[r.k] + ' '));
       item.appendChild(val);
@@ -326,7 +394,7 @@
     el.readout.replaceChildren(frag);
     el.chartCanvas.setAttribute('aria-valuenow', String(age));
     el.chartCanvas.setAttribute('aria-valuetext', 'Age ' + age + ': ' + (rows.length
-      ? rows.map((r) => LABELS[r.k] + ' ' + r.v.toFixed(1) + ' hours').join(', ')
+      ? rows.map((r) => LABELS[r.k] + ' ' + fmtPct(r.v) + ' of the waking day').join(', ')
       : 'all lines hidden'));
   }
 
@@ -431,39 +499,89 @@
       c.width = W; c.height = H;
       const ctx = c.getContext('2d');
       ctx.fillStyle = '#0A0A0A'; ctx.fillRect(0, 0, W, H);
-      const rows = lifespan(), cell = 12, gw = 52 * cell, gx = (W - gw) / 2, gy = 100;
+
+      const years = lifespan();
       const total = totalWeeks();
       const capped = Math.min(state.lived, total);
+      const remain = Math.max(0, total - state.lived);
+      const bonus = state.age >= years;
       // Same ember rule as the on-page grid: past expectancy it sits on the
       // last cell instead of vanishing.
       const ember = capped < total ? capped : total - 1;
-      for (let i = 0; i < rows * 52; i++) {
-        const x = gx + (i % 52) * cell + cell / 2;
-        const y = gy + Math.floor(i / 52) * cell + cell / 2;
-        ctx.fillStyle = i === ember ? '#D9863B' : i < capped ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.14)';
-        ctx.beginPath(); ctx.arc(x, y, i === ember ? cell * 0.46 : cell * 0.32, 0, Math.PI * 2); ctx.fill();
-      }
-      // Center the text block in the band below the grid (no dead bottom
-      // third on shorter lifespans), and let the card invite, not just state.
-      const gridBottom = gy + rows * cell;
-      const blockH = 118;
-      const y0 = gridBottom + (H - gridBottom - blockH) / 2 + 34;
+
+      // The card's grid runs sideways — one column per year of age, 52 weeks
+      // top to bottom — so a life reads left to right like a timeline and the
+      // lived share is legible at arm's length, which the 52-wide page grid
+      // (83 cramped rows on a 4:5 card) never was.
+      const cell = Math.floor((W - 120) / years);
+      const gw = years * cell, gh = 52 * cell;
+      const gx = Math.round((W - gw) / 2), gy = 470;
+
       ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(237,234,228,.55)';
+      ctx.font = '600 24px Helvetica, Arial, sans-serif';
+      ctx.letterSpacing = '7px';
+      ctx.fillText('YOUR LIFE IN WEEKS', W / 2 + 4, 152);
+      ctx.letterSpacing = '0px';
+
       ctx.fillStyle = '#EDEAE4';
-      ctx.font = '300 46px Newsreader, Georgia, serif';
-      ctx.fillText(`I’ve lived ${fmt(capped)} of my ~${fmt(total)} weeks`, W / 2, y0);
+      ctx.font = '300 58px Newsreader, Georgia, serif';
+      ctx.fillText(`I’ve lived ${fmt(capped)} weeks.`, W / 2, 268);
       ctx.fillStyle = 'rgba(237,234,228,.6)';
-      ctx.font = 'italic 300 28px Newsreader, Georgia, serif';
-      ctx.fillText('You have about 4,000 weeks. See yours.', W / 2, y0 + 56);
+      ctx.font = 'italic 300 33px Newsreader, Georgia, serif';
+      ctx.fillText(bonus ? 'Bonus time. Every week is a gift.' : `About ${fmt(remain)} of my ~${fmt(total)} remain.`, W / 2, 332);
+
+      // NOW marker above the ember's column, clamped so the label never
+      // leaves the card at either end of a life.
+      const emberCol = Math.floor(ember / 52);
+      const nowX = gx + emberCol * cell + cell / 2;
+      ctx.fillStyle = '#D9863B';
+      ctx.font = '600 23px Helvetica, Arial, sans-serif';
+      ctx.fillText('NOW · ' + Math.min(state.age, years), Math.min(Math.max(nowX, gx + 80), gx + gw - 80), gy - 36);
+      ctx.strokeStyle = 'rgba(217,134,59,.9)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(nowX, gy - 26); ctx.lineTo(nowX, gy - 10); ctx.stroke();
+
+      for (let i = 0; i < years * 52; i++) {
+        if (i === ember) continue;
+        const x = gx + Math.floor(i / 52) * cell + cell / 2;
+        const y = gy + (i % 52) * cell + cell / 2;
+        ctx.fillStyle = i < capped ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.16)';
+        ctx.beginPath(); ctx.arc(x, y, cell * 0.32, 0, Math.PI * 2); ctx.fill();
+      }
+      ctx.save();
+      ctx.shadowColor = 'rgba(217,134,59,.85)'; ctx.shadowBlur = 14;
+      ctx.fillStyle = '#D9863B';
+      ctx.beginPath(); ctx.arc(nowX, gy + (ember % 52) * cell + cell / 2, cell * 0.5, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
+
+      // Age axis under the grid decodes the columns.
+      ctx.fillStyle = 'rgba(237,234,228,.55)';
+      ctx.font = '22px Helvetica, Arial, sans-serif';
+      ctx.strokeStyle = 'rgba(237,234,228,.3)'; ctx.lineWidth = 1;
+      ctx.textAlign = 'left';
+      ctx.fillText('AGE', gx, gy + gh + 46);
+      ctx.textAlign = 'center';
+      for (let a = 20; a <= years - 2; a += 20) {
+        const x = gx + a * cell + cell / 2;
+        ctx.beginPath(); ctx.moveTo(x, gy + gh + 10); ctx.lineTo(x, gy + gh + 20); ctx.stroke();
+        ctx.fillText(String(a), x, gy + gh + 46);
+      }
+
+      ctx.fillStyle = 'rgba(237,234,228,.6)';
+      ctx.font = 'italic 300 32px Newsreader, Georgia, serif';
+      ctx.fillText('You have about 4,000 weeks. See yours.', W / 2, 1196);
       ctx.fillStyle = '#D9863B';
       ctx.font = '26px Helvetica, Arial, sans-serif';
       const u = new URL(shareUrl());
-      ctx.fillText(u.host + u.pathname, W / 2, y0 + 118);
+      ctx.fillText(u.host + u.pathname, W / 2, 1252);
       c.toBlob(res, 'image/png');
     });
   }
   async function doShare() {
     try {
+      // Newsreader is already in use on the page, but the card draws to a
+      // fresh canvas — wait out any stragglers so it never renders fallback.
+      if (document.fonts && document.fonts.ready) await document.fonts.ready;
       const blob = await makeCard();
       const url = shareUrl();
       const text = `I’ve lived ${fmt(Math.min(state.lived, totalWeeks()))} of my ~${fmt(totalWeeks())} weeks.`;
@@ -506,15 +624,17 @@
     el.dob.removeAttribute('aria-invalid');
   }
   function submit() {
-    const v = state.birthVal;
-    if (!v) return showErr('Enter your birthdate to begin.');
+    const raw = el.dob.value;
+    if (!raw.trim()) return showErr('Enter your birthdate to begin.');
+    const v = parseDob(raw);
+    if (!v) return showErr('Couldn’t read that date. Try something like 24 July 1999 or 24/7/1999.');
     const b = new Date(v + 'T00:00:00'), now = new Date();
-    if (isNaN(b)) return showErr('That date didn’t come through — try picking it again.');
     if (b > now) return showErr('That date hasn’t happened yet.');
     const ageY = (now - b) / (365.25 * DAY_MS);
     if (ageY > 99) return showErr('That’s more than 99 years ago — check the year.');
 
     clearErr();
+    state.birthVal = v;
     state.lived = Math.floor((now - b) / (7 * DAY_MS));
     state.age = Math.floor(ageY);
     state.submitted = true;
@@ -537,7 +657,7 @@
   }
 
   // --- Wiring -----------------------------------------------------------
-  el.dob.addEventListener('input', (e) => { state.birthVal = e.target.value; clearErr(); });
+  el.dob.addEventListener('input', clearErr);
   el.form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
 
   el.basisSeg.addEventListener('click', (e) => {

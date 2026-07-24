@@ -47,12 +47,18 @@ lines feel archival rather than dashboard-bright:
 
 | Series | Hex |
 |---|---|
-| Family | `#93B79B` (sage) |
-| Friends | `#7FA3C9` (dusty blue) |
-| Partner | `#B393C9` (lilac) |
-| Children | `#C98F93` (dusty rose) |
+| Family | `#95C98C` (sage) |
+| Friends | `#699FDE` (dusty blue) |
+| Children | `#E0876F` (terracotta) |
+| Partner | `#C99BEB` (lilac) |
 | Coworkers | `#8A867F` (warm gray) |
 | Alone | `#EDEAE4` (the ivory ink — Alone is "you") |
+
+Series order (legend, labels, readout) is fixed as listed: blue and lilac are
+deliberately non-adjacent, and the hues are stepped so every adjacent pair
+clears color-vision-deficiency separation (validated CVD ΔE ≥ 16, normal ≥ 16
+on the dark ground). Direct labels back the colors up, so identity never
+rides on hue alone.
 
 Rules:
 
@@ -117,9 +123,23 @@ Scale (all fluid `clamp()`):
   and the share card alike) — the current week is always still burning, never
   "complete". `aria-hidden` with the caption as text equivalent; the caption
   takes focus (`tabindex="-1"`) after submit.
+- **Birthdate field**: free text, not a native date picker — scrolling
+  decades in a picker is high friction on mobile; typing is faster. A
+  forgiving parser reads "24 July 1999", "July 24 1999", "24/7/1999",
+  "1999-07-24", "24.07.99", and "24071999"; bare numbers are day-first
+  (the page is Australian) with a month-first fallback when day-first is
+  impossible. Placeholder shows an example; the parse-failure error names
+  two formats.
 - **Chart**: canvas in an unpadded `#chart-wrap` (sized to content width),
   amber vertical scrub line with amber age chip, `touch-action: pan-y`,
-  `cursor: ew-resize`. The canvas is a focusable `role="slider"`
+  `cursor: ew-resize`. Values plot as a share of a 16-hour waking day
+  (percent, 0–50% gridlines), not raw hours — "16% of your waking day"
+  lands harder than "2.6h" — and lines are lightly smoothed (1-2-1 kernel)
+  at 2px so survey jitter doesn't hide the shape; the source line declares
+  both. On viewports ≥ 480px each visible line gets a direct end label
+  (color dot + ivory text, nudged apart on collision) in a reserved right
+  margin sized once for the longest label, so toggling never reflows the
+  plot. The canvas is a focusable `role="slider"`
   (arrow keys / Home / End move the age; `aria-valuetext` reads the values).
   Three series start on — Alone, Partner, Friends, the ones the insight copy
   speaks to — and the rest are a chip-tap away, so the fold stays under the
@@ -138,10 +158,16 @@ Scale (all fluid `clamp()`):
   microcopy line says "Message copied — text {name} from your phone." The
   conversion moment never fails silently.
 - **Share card**: generated canvas, 1080×1350 (4:5 portrait). Same tokens:
-  `#0A0A0A` ground, dot grid with amber current week, Newsreader 300 46px
-  stat line in ivory, an italic Newsreader invite line
-  ("You have about 4,000 weeks. See yours.") at `.6` ivory, amber 26px URL
-  line — the block vertically centered in the band below the grid. The card
+  `#0A0A0A` ground, ivory ink, one amber moment. Unlike the page grid, the
+  card's grid runs sideways — one column per year of age, 52 weeks top to
+  bottom — so a life reads left to right like a timeline and the lived share
+  is legible at arm's length. Top to bottom: letterspaced sans eyebrow
+  ("YOUR LIFE IN WEEKS", `.55` ivory), Newsreader 300 58px stat
+  ("I've lived 1,408 weeks."), italic 33px subline ("About 2,908 of my
+  ~4,316 remain." — or the bonus-time line), an amber "NOW · age" marker
+  ticked to the ember's column, the grid (glowing amber ember, `.16`
+  unlived dots), an AGE 20/40/60/80 axis, the italic invite line
+  ("You have about 4,000 weeks. See yours.") and the amber URL. The card
   is a first-class surface — it must look like the page, and it invites, not
   just states.
 - **Link-preview card** (`og.png`, 1200×630) and favicon (inline SVG amber
