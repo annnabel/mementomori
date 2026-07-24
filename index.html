@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Your Life in Weeks — Memento Mori</title>
+<meta name="description" content="A memento mori: your life drawn as a grid of weeks. Enter your date of birth and see the weeks you have lived, the week you are in, and the weeks that may remain.">
+<meta name="theme-color" content="#0d1418">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230d1418'/%3E%3Crect x='2' y='2' width='5' height='5' fill='%23478d9e'/%3E%3Crect x='9' y='2' width='5' height='5' fill='%23478d9e'/%3E%3Crect x='2' y='9' width='5' height='5' fill='%23e9b153'/%3E%3Crect x='9' y='9' width='5' height='5' fill='%23263238'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gloock&family=Archivo:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg-hi:   oklch(0.165 0.024 222);
+    --bg:      oklch(0.135 0.022 222);
+    --bg-lo:   oklch(0.110 0.020 224);
+    --surface: oklch(0.195 0.026 220);
+    --ink:     oklch(0.930 0.010 210);
+    --muted:   oklch(0.700 0.022 212);
+    --faint:   oklch(0.520 0.024 214);
+    --socket:  oklch(0.215 0.022 220);
+    --lived:   oklch(0.610 0.093 200);
+    --lived-deep: oklch(0.480 0.075 203);
+    --flame:   oklch(0.800 0.145 78);
+    --flame-glow: oklch(0.800 0.145 78 / 0.45);
+    --hairline: oklch(0.300 0.024 218);
+    --gap: 2px;
+    --font-display: "Gloock", "Iowan Old Style", Georgia, serif;
+    --font-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; }
+
+  html { scrollbar-gutter: stable; }
+
+  body {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--ink);
+    background: linear-gradient(to bottom, var(--bg-hi), var(--bg) 30rem, var(--bg-lo));
+    background-color: var(--bg);
+    min-height: 100vh;
+  }
+
+  main {
+    max-width: 62rem;
+    margin: 0 auto;
+    padding: clamp(2.5rem, 7vh, 5.5rem) clamp(1rem, 4vw, 2.5rem) 4rem;
+  }
+
+  /* ---------- Masthead ---------- */
+
+  .masthead { text-align: center; }
+
+  h1 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.4rem, 7vw, 4.75rem);
+    line-height: 1.08;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .sub {
+    margin-top: 0.9rem;
+    color: var(--muted);
+    font-size: 1.0625rem;
+    text-wrap: balance;
+  }
+
+  .controls {
+    margin-top: clamp(1.75rem, 4vh, 2.75rem);
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: baseline;
+    gap: 0.6rem 1.75rem;
+    font-size: 1rem;
+  }
+
+  .controls label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.55rem;
+    color: var(--muted);
+  }
+
+  .controls input {
+    font: inherit;
+    font-weight: 500;
+    color: var(--ink);
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--hairline);
+    padding: 0.15rem 0.1rem 0.25rem;
+    transition: border-color 160ms ease-out;
+  }
+  .controls input:hover { border-color: var(--faint); }
+  .controls input:focus-visible {
+    outline: none;
+    border-bottom-color: var(--flame);
+  }
+  input[type="date"] { width: 14ch; }
+  input[type="number"] {
+    width: 4.5ch;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  input::-webkit-outer-spin-button,
+  input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  ::-webkit-calendar-picker-indicator { opacity: 0.55; cursor: pointer; }
+
+  /* ---------- The reading ---------- */
+
+  .reading {
+    margin: clamp(2.25rem, 6vh, 3.75rem) auto 0;
+    max-width: 38rem;
+    text-align: center;
+    font-size: 1.125rem;
+    min-height: 4.5rem;
+  }
+  .reading strong {
+    color: var(--flame);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .reading .aside {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.9375rem;
+    color: var(--muted);
+  }
+
+  /* ---------- Chart ---------- */
+
+  .chart { margin-top: clamp(2rem, 5vh, 3.25rem); }
+
+  .chart-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem 1.5rem;
+    padding: 0 0 0.8rem 2.75rem;
+    font-size: 0.875rem;
+    color: var(--faint);
+  }
+
+  .legend {
+    list-style: none;
+    padding: 0;
+    display: flex;
+    gap: 1.25rem;
+  }
+  .legend li { display: inline-flex; align-items: center; gap: 0.45rem; }
+  .legend i {
+    width: 0.7em; height: 0.7em;
+    border-radius: 1.5px;
+    background: var(--socket);
+  }
+  .legend .k-lived i { background: var(--lived); }
+  .legend .k-now i { background: var(--flame); }
+
+  .grid { padding-left: 2.75rem; }
+
+  .row {
+    position: relative;
+    display: flex;
+    gap: var(--gap);
+  }
+  .row + .row { margin-top: var(--gap); }
+  .row.decade { margin-top: calc(var(--gap) * 4); }
+  .row:first-child { margin-top: 0; }
+
+  .age {
+    position: absolute;
+    left: -2.75rem;
+    width: 2rem;
+    top: 50%;
+    transform: translateY(-50%);
+    text-align: right;
+    font-size: 0.8125rem;
+    color: var(--faint);
+    font-variant-numeric: tabular-nums;
+    user-select: none;
+  }
+
+  .w {
+    flex: 1 1 0;
+    min-width: 0;
+    aspect-ratio: 1;
+    border-radius: 1.5px;
+    background: var(--socket);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+  .w.lived {
+    background: linear-gradient(to bottom, var(--lived), var(--lived-deep));
+  }
+  .w.now {
+    background: var(--flame);
+    box-shadow: 0 0 6px 1px var(--flame-glow);
+    animation: breathe 3.2s ease-in-out infinite;
+  }
+  @keyframes breathe {
+    0%, 100% { box-shadow: 0 0 5px 1px var(--flame-glow); }
+    50%      { box-shadow: 0 0 12px 3px var(--flame-glow); }
+  }
+
+  .w:hover { outline: 1px solid var(--ink); outline-offset: 0; }
+
+  /* ---------- Tooltip ---------- */
+
+  .tip {
+    position: fixed;
+    z-index: 10;
+    pointer-events: none;
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 6px;
+    padding: 0.5rem 0.7rem;
+    font-size: 0.8125rem;
+    line-height: 1.45;
+    color: var(--ink);
+    box-shadow: 0 8px 24px oklch(0.05 0.01 220 / 0.55);
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+    max-width: 16rem;
+  }
+  .tip.show { opacity: 1; }
+  .tip .when { color: var(--muted); display: block; }
+
+  /* ---------- Footer ---------- */
+
+  footer {
+    margin-top: clamp(3rem, 8vh, 5rem);
+    text-align: center;
+  }
+  blockquote {
+    font-family: var(--font-display);
+    font-size: clamp(1.2rem, 2.6vw, 1.5rem);
+    line-height: 1.5;
+    max-width: 34rem;
+    margin: 0 auto;
+    text-wrap: pretty;
+  }
+  blockquote cite {
+    display: block;
+    margin-top: 0.9rem;
+    font-family: var(--font-body);
+    font-style: normal;
+    font-size: 0.875rem;
+    color: var(--muted);
+  }
+
+  :focus-visible { outline: 2px solid var(--flame); outline-offset: 2px; }
+  .controls input:focus-visible { outline: none; }
+
+  @media (max-width: 40rem) {
+    .grid { padding-left: 2rem; }
+    .chart-head { padding-left: 2rem; }
+    .age { left: -2rem; width: 1.5rem; font-size: 0.6875rem; }
+    :root { --gap: 1px; }
+    .row.decade { margin-top: calc(var(--gap) * 5); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .w.now { animation: none; }
+    .tip { transition: none; }
+  }
+
+  @media print {
+    :root {
+      --bg: #ffffff; --bg-hi: #ffffff; --bg-lo: #ffffff;
+      --ink: #171c1e; --muted: #4d5a5f; --faint: #6b787d;
+      --socket: #e4e7e8; --hairline: #c9ced0;
+      --lived: #2a6675; --lived-deep: #1e4c58; --flame: #c07f16;
+    }
+    body { background: #ffffff; }
+    .controls, .legend { display: none; }
+    .w.now { animation: none; box-shadow: none; }
+    footer { margin-top: 2rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="masthead">
+    <h1>Your Life in Weeks</h1>
+    <p class="sub">A memento mori. Each square below is one week — row by row, a whole life.</p>
+    <div class="controls">
+      <label for="dob">Born
+        <input type="date" id="dob" min="1900-01-01" autocomplete="bday">
+      </label>
+      <label for="years">Horizon
+        <input type="number" id="years" min="40" max="120" step="1" value="90" inputmode="numeric">
+      </label>
+    </div>
+  </header>
+
+  <section class="reading" id="reading" aria-live="polite">
+    <p>Enter your date of birth to light the weeks you have lived.</p>
+  </section>
+
+  <section class="chart" aria-label="Life in weeks chart">
+    <div class="chart-head">
+      <span>Each row is one year · 52 weeks across</span>
+      <ul class="legend">
+        <li class="k-lived"><i></i>lived</li>
+        <li class="k-now"><i></i>this week</li>
+        <li class="k-left"><i></i>remaining</li>
+      </ul>
+    </div>
+    <div class="grid" id="grid" role="img" aria-label="Life grid, awaiting a date of birth."></div>
+  </section>
+
+  <footer>
+    <blockquote>
+      “Since it is possible that thou mayest depart from life this very moment, regulate every act and thought accordingly.”
+      <cite>Marcus Aurelius, Meditations, Book II</cite>
+    </blockquote>
+  </footer>
+</main>
+
+<div class="tip" id="tip" role="presentation" hidden></div>
+
+<script>
+(function () {
+  "use strict";
+
+  var WEEK_MS = 7 * 24 * 60 * 60 * 1000;
+  var MIN_YEARS = 40, MAX_YEARS = 120, DEFAULT_YEARS = 90;
+
+  var gridEl = document.getElementById("grid");
+  var readingEl = document.getElementById("reading");
+  var dobInput = document.getElementById("dob");
+  var yearsInput = document.getElementById("years");
+  var tipEl = document.getElementById("tip");
+
+  var cells = [];
+  var builtYears = 0;
+  var state = { dob: null, years: DEFAULT_YEARS };
+  var sweepHandle = 0;
+
+  var fmtInt = new Intl.NumberFormat();
+  var fmtDay = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+  var fmtDayYear = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric", year: "numeric" });
+  var fmtFull = new Intl.DateTimeFormat(undefined, { day: "numeric", month: "long", year: "numeric" });
+
+  function prefersReducedMotion() {
+    return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  }
+
+  function parseISODate(s) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s || "")) return null;
+    var p = s.split("-");
+    var d = new Date(+p[0], +p[1] - 1, +p[2]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function clampYears(n) {
+    n = Math.round(+n);
+    if (!isFinite(n)) return DEFAULT_YEARS;
+    return Math.min(MAX_YEARS, Math.max(MIN_YEARS, n));
+  }
+
+  function ageInYears(dob, now) {
+    var a = now.getFullYear() - dob.getFullYear();
+    var m = now.getMonth() - dob.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) a--;
+    return a;
+  }
+
+  function weeksLived(dob, now) {
+    return Math.floor((now.getTime() - dob.getTime()) / WEEK_MS);
+  }
+
+  /* ---------- persistence ---------- */
+
+  function loadState() {
+    var params = new URLSearchParams(location.search);
+    var dob = params.get("dob"), years = params.get("years");
+    try {
+      if (!dob) dob = localStorage.getItem("mm.dob");
+      if (!years) years = localStorage.getItem("mm.years");
+    } catch (e) { /* storage unavailable */ }
+    state.dob = parseISODate(dob) ? dob : null;
+    state.years = years ? clampYears(years) : DEFAULT_YEARS;
+  }
+
+  function saveState() {
+    try {
+      if (state.dob) localStorage.setItem("mm.dob", state.dob);
+      else localStorage.removeItem("mm.dob");
+      localStorage.setItem("mm.years", String(state.years));
+    } catch (e) { /* storage unavailable */ }
+    var params = new URLSearchParams();
+    if (state.dob) params.set("dob", state.dob);
+    if (state.years !== DEFAULT_YEARS) params.set("years", String(state.years));
+    var qs = params.toString();
+    history.replaceState(null, "", qs ? "?" + qs : location.pathname);
+  }
+
+  /* ---------- grid ---------- */
+
+  function buildGrid(years) {
+    gridEl.textContent = "";
+    cells = [];
+    var frag = document.createDocumentFragment();
+    for (var age = 0; age < years; age++) {
+      var row = document.createElement("div");
+      row.className = "row" + (age > 0 && age % 10 === 0 ? " decade" : "");
+      if (age % 10 === 0) {
+        var label = document.createElement("span");
+        label.className = "age";
+        label.textContent = String(age);
+        row.appendChild(label);
+      }
+      for (var wk = 0; wk < 52; wk++) {
+        var cell = document.createElement("i");
+        cell.className = "w";
+        cell.dataset.i = String(age * 52 + wk);
+        cells.push(cell);
+        row.appendChild(cell);
+      }
+      frag.appendChild(row);
+    }
+    gridEl.appendChild(frag);
+    builtYears = years;
+  }
+
+  function paintCells(lived, total, animate) {
+    cancelAnimationFrame(sweepHandle);
+    var lit = Math.min(lived, total);
+    var i;
+    if (!animate || lit === 0) {
+      for (i = 0; i < total; i++) {
+        cells[i].className = i < lit ? "w lived" : "w";
+      }
+      if (lived < total && lived >= 0) cells[lived].className = "w now";
+      return;
+    }
+    for (i = 0; i < total; i++) cells[i].className = "w";
+    /* Time-based sweep (~1.2s, ease-out) so it always completes, even if
+       frames are dropped; finish() guarantees the final state regardless. */
+    var DURATION = 1200;
+    var frontier = 0;
+    var startTime = 0;
+    var done = false;
+    function finish() {
+      if (done) return;
+      done = true;
+      cancelAnimationFrame(sweepHandle);
+      for (; frontier < lit; frontier++) cells[frontier].className = "w lived";
+      if (lived < total) cells[lived].className = "w now";
+    }
+    function step(ts) {
+      if (done) return;
+      if (!startTime) startTime = ts;
+      var t = Math.min(1, (ts - startTime) / DURATION);
+      var eased = 1 - Math.pow(1 - t, 3);
+      var stop = Math.min(lit, Math.ceil(eased * lit / 52) * 52);
+      for (; frontier < stop; frontier++) cells[frontier].className = "w lived";
+      if (t < 1) sweepHandle = requestAnimationFrame(step);
+      else finish();
+    }
+    sweepHandle = requestAnimationFrame(step);
+    setTimeout(finish, DURATION + 400);
+  }
+
+  /* ---------- prose ---------- */
+
+  function renderReading(dob, now, lived, total) {
+    if (!dob) {
+      readingEl.innerHTML = "<p>Enter your date of birth to light the weeks you have lived.</p>";
+      gridEl.setAttribute("aria-label", "Life grid, awaiting a date of birth.");
+      return;
+    }
+    if (dob.getTime() > now.getTime()) {
+      readingEl.innerHTML = "<p>That birthday has not happened yet. The grid waits.</p>";
+      gridEl.setAttribute("aria-label", "Life grid: no weeks lived yet.");
+      return;
+    }
+    var age = ageInYears(dob, now);
+    var html;
+    if (lived >= total) {
+      html = "<p>You are " + age + " — you have lived <strong>" + fmtInt.format(lived) +
+        "</strong> weeks, beyond this " + state.years + "-year horizon of " +
+        fmtInt.format(total) + ". Every square is lit." +
+        "<span class=\"aside\">This is week " + fmtInt.format(lived + 1) +
+        " of your life. It will not come again.</span></p>";
+    } else {
+      html = "<p>Born " + fmtFull.format(dob) + ", you are " + age +
+        ". You have lived <strong>" + fmtInt.format(lived) +
+        "</strong> weeks — <strong>" + fmtInt.format(total - lived) +
+        "</strong> of your " + fmtInt.format(total) + " remain." +
+        "<span class=\"aside\">This is week " + fmtInt.format(lived + 1) +
+        " of your life. It will not come again.</span></p>";
+    }
+    readingEl.innerHTML = html;
+    gridEl.setAttribute("aria-label",
+      "Life grid: " + fmtInt.format(Math.min(lived, total)) + " of " +
+      fmtInt.format(total) + " weeks lived.");
+  }
+
+  /* ---------- render ---------- */
+
+  function render(animate) {
+    var total = state.years * 52;
+    if (builtYears !== state.years) buildGrid(state.years);
+    var dob = state.dob ? parseISODate(state.dob) : null;
+    var now = new Date();
+    if (!dob || dob.getTime() > now.getTime()) {
+      paintCells(0, total, false);
+      renderReading(dob, now, 0, total);
+      return;
+    }
+    var lived = weeksLived(dob, now);
+    paintCells(lived, total,
+      animate && !prefersReducedMotion() && document.visibilityState === "visible");
+    renderReading(dob, now, lived, total);
+  }
+
+  /* ---------- tooltip ---------- */
+
+  function tipTextFor(i) {
+    var age = Math.floor(i / 52);
+    var wk = (i % 52) + 1;
+    var dob = state.dob ? parseISODate(state.dob) : null;
+    var head = "Age " + age + " · week " + wk + " of that year";
+    if (!dob) return { head: head, when: "week " + fmtInt.format(i + 1) + " of a life" };
+    var start = new Date(dob.getTime() + i * WEEK_MS);
+    var end = new Date(start.getTime() + 6 * 24 * 60 * 60 * 1000);
+    var lived = weeksLived(dob, new Date());
+    var status = i < lived ? "lived" : i === lived ? "this week" : "ahead";
+    return {
+      head: "Week " + fmtInt.format(i + 1) + " · age " + age + " · " + status,
+      when: fmtDay.format(start) + " – " + fmtDayYear.format(end)
+    };
+  }
+
+  function showTip(cell) {
+    var t = tipTextFor(+cell.dataset.i);
+    tipEl.innerHTML = t.head + "<span class=\"when\">" + t.when + "</span>";
+    tipEl.hidden = false;
+    var c = cell.getBoundingClientRect();
+    var r = tipEl.getBoundingClientRect();
+    var x = Math.min(Math.max(8, c.left + c.width / 2 - r.width / 2), window.innerWidth - r.width - 8);
+    var y = c.top - r.height - 10;
+    if (y < 8) y = c.bottom + 10;
+    tipEl.style.left = x + "px";
+    tipEl.style.top = y + "px";
+    tipEl.classList.add("show");
+  }
+
+  function hideTip() {
+    tipEl.classList.remove("show");
+    tipEl.hidden = true;
+  }
+
+  gridEl.addEventListener("pointerover", function (e) {
+    var cell = e.target.closest(".w");
+    if (cell) showTip(cell);
+  });
+  gridEl.addEventListener("pointerleave", hideTip);
+  window.addEventListener("scroll", hideTip, { passive: true });
+
+  /* ---------- inputs ---------- */
+
+  dobInput.addEventListener("change", function () {
+    state.dob = parseISODate(dobInput.value) ? dobInput.value : null;
+    saveState();
+    render(true);
+  });
+
+  yearsInput.addEventListener("change", function () {
+    state.years = clampYears(yearsInput.value);
+    yearsInput.value = String(state.years);
+    saveState();
+    render(false);
+  });
+
+  /* ---------- boot ---------- */
+
+  loadState();
+  if (state.dob) dobInput.value = state.dob;
+  yearsInput.value = String(state.years);
+  var today = new Date();
+  dobInput.max = today.getFullYear() + "-" +
+    String(today.getMonth() + 1).padStart(2, "0") + "-" +
+    String(today.getDate()).padStart(2, "0");
+  render(true);
+})();
+</script>
+</body>
+</html>
