@@ -16,8 +16,7 @@ muted categorical hues.
 
 - **Register**: brand (the page is the product)
 - **Theme**: dark only — no light mode; `color-scheme: dark` on form controls
-- **Layout**: single column, max-width 680px (520px for the calendar), long
-  scroll, one idea per fold
+- **Layout**: single column, max-width 680px, long scroll, one idea per fold
 
 ## Color Palette
 
@@ -115,10 +114,14 @@ Scale (all fluid `clamp()`):
   `aria-pressed` toggles, min-height 44px (touch target); off state drops to
   `.55` text / `.16` border.
 - **Inline error** (`.err`): amber text, `role="alert"`, no alerts/toasts.
-- **Calendar grid**: canvas, 52 dots per row, dot radius = 0.32 × cell.
-  Filled `rgba(237,234,228,.92)`, unlived `.13`, current week amber and
-  pulsing. A small-print key sits above the grid ("One dot per week. The
-  amber dot is this week.") so the metaphor is decoded before the fill
+- **Calendar grid**: canvas, one column per year of age with 52 weeks top to
+  bottom — a life reads left to right like a timeline, and the page grid is
+  the same picture as the share card that may have invited the reader. Dot
+  radius = 0.32 × cell. Filled `rgba(237,234,228,.92)`, unlived `.13`,
+  current week amber and pulsing, with an amber "NOW · age" marker ticked to
+  the ember's column and an AGE 20/40/60/80 axis below. A small-print key
+  sits above the grid ("Each column is a year. One dot per week — the amber
+  dot is this week.") so the metaphor is decoded before the fill
   finishes. Past expectancy the ember clamps to the last cell (on the grid
   and the share card alike) — the current week is always still burning, never
   "complete". `aria-hidden` with the caption as text equivalent; the caption
@@ -176,7 +179,7 @@ Scale (all fluid `clamp()`):
 
 ## Layout & Spacing
 
-- Containers: 680px max (hero, chart, act), 520px (calendar), 820px (quote).
+- Containers: 680px max (hero, calendar, chart, act), 820px (quote).
   Side padding 24px.
 - Vertical rhythm is deliberately uneven — it breathes where the emotion
   peaks: hero fills `92svh`; chart section 96px padding; reframe 140px;
@@ -187,7 +190,7 @@ Scale (all fluid `clamp()`):
 
 ## Motion
 
-- **Calendar fill**: dots fill top-to-bottom over ~1.5s on first render — the
+- **Calendar fill**: dots fill left-to-right over ~1.5s on first render — the
   emotional core ("watching your life fill up"). Current-week dot pulses
   continuously (rAF), pausing when off-screen. When the fill completes, if
   the caption's numbers sit below the fold and the user hasn't scrolled on

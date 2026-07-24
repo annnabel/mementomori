@@ -172,15 +172,39 @@
   }
 
   // --- Section 2: the calendar -----------------------------------------
+  // Same orientation as the share card: one column per year of age, 52 weeks
+  // top to bottom — the page and the card someone shared must be the same
+  // picture.
   function drawGrid(n) {
     const g = grid, ctx = g.ctx;
     ctx.clearRect(0, 0, g.w, g.h);
     const r = g.cell * 0.32;
-    for (let i = 0; i < g.rows * 52; i++) {
+    for (let i = 0; i < g.years * 52; i++) {
       if (i === g.current) continue;
-      const x = (i % 52) * g.cell + g.cell / 2;
-      const y = Math.floor(i / 52) * g.cell + g.cell / 2;
+      const x = Math.floor(i / 52) * g.cell + g.cell / 2;
+      const y = g.top + (i % 52) * g.cell + g.cell / 2;
       drawDot(ctx, x, y, r, i < n ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.13)');
+    }
+    // NOW marker above the ember's column (clamped inside the canvas) and an
+    // age axis below — the same chrome the share card carries.
+    const nowX = Math.floor(g.current / 52) * g.cell + g.cell / 2;
+    ctx.fillStyle = '#D9863B';
+    ctx.font = '600 11px Helvetica, Arial, sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText('NOW · ' + Math.min(state.age, g.years), Math.min(Math.max(nowX, 34), g.w - 34), 12);
+    ctx.strokeStyle = 'rgba(217,134,59,.9)'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(nowX, 17); ctx.lineTo(nowX, g.top - 7); ctx.stroke();
+    const gridBottom = g.top + 52 * g.cell;
+    ctx.fillStyle = 'rgba(237,234,228,.55)';
+    ctx.font = '11px Helvetica, Arial, sans-serif';
+    ctx.strokeStyle = 'rgba(237,234,228,.3)'; ctx.lineWidth = 1;
+    ctx.textAlign = 'left';
+    ctx.fillText('AGE', 1, gridBottom + 22);
+    ctx.textAlign = 'center';
+    for (let a = 20; a <= g.years - 2; a += 20) {
+      const x = a * g.cell + g.cell / 2;
+      ctx.beginPath(); ctx.moveTo(x, gridBottom + 4); ctx.lineTo(x, gridBottom + 10); ctx.stroke();
+      ctx.fillText(String(a), x, gridBottom + 22);
     }
   }
   function startGrid(animate) {
@@ -188,15 +212,16 @@
     if (!c || !c.parentElement) return;
     cancelAnimationFrame(gridRaf);
     cancelAnimationFrame(pulseRaf);
-    const w = c.parentElement.clientWidth, rows = lifespan();
-    const cell = w / 52, h = cell * rows;
+    const w = c.parentElement.clientWidth, years = lifespan();
+    const cell = w / years;
+    const top = 34, h = top + cell * 52 + 28;
     const ctx = setupCanvas(c, w, h);
     const total = totalWeeks();
     const capped = Math.min(state.lived, total);
     // Past expectancy the ember moves to the last cell — the current week is
     // always still burning, never "complete".
     const current = capped < total ? capped : total - 1;
-    grid = { ctx, cell, rows, w, h, current, capped };
+    grid = { ctx, cell, years, w, h, top, current, capped };
 
     const dur = (animate && !prefersReduced()) ? 1500 : 0;
     const t0 = performance.now();
@@ -216,8 +241,8 @@
   function startPulse() {
     const g = grid;
     if (!g || g.current < 0) return;
-    const cx = (g.current % 52) * g.cell + g.cell / 2;
-    const cy = Math.floor(g.current / 52) * g.cell + g.cell / 2;
+    const cx = Math.floor(g.current / 52) * g.cell + g.cell / 2;
+    const cy = g.top + (g.current % 52) * g.cell + g.cell / 2;
     const rMax = g.cell * 0.46;
     const loop = (t) => {
       pulseRaf = requestAnimationFrame(loop);
