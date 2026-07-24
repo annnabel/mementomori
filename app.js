@@ -834,6 +834,18 @@
   el.name.addEventListener('input', (e) => { state.name = e.target.value; updateSms(); });
   el.share.addEventListener('click', doShare);
 
+  // "Continue" cues at the foot of each section: an explicit click carries
+  // the reader forward through the arc instead of leaving free scroll as
+  // the only way to discover the next section is there.
+  document.querySelectorAll('.next-cue-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = $(btn.dataset.next);
+      if (!target) return;
+      const top = target.getBoundingClientRect().top + window.scrollY - 16;
+      window.scrollTo({ top, behavior: prefersReduced() ? 'auto' : 'smooth' });
+    });
+  });
+
   let resizeTimer = 0;
   window.addEventListener('resize', () => {
     if (!state.submitted) return;
