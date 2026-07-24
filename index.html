@@ -148,6 +148,7 @@
     width: 100%;
   }
   .field:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+  .field::placeholder { color: rgba(237,234,228,.55); opacity: 1; }
 
   .micro { font-size: 12.5px; color: rgba(237,234,228,.55); margin: 0; }
 
@@ -363,8 +364,8 @@
     <p class="sub" id="hero-sub">See yours.</p>
     <form class="form" id="birth-form" novalidate>
       <label class="lbl" for="dob">When were you born?</label>
-      <input class="field" id="dob" type="text" autocomplete="bday" enterkeyhint="go" spellcheck="false" autocapitalize="off" placeholder="e.g. 24 July 1999" aria-describedby="dob-privacy err">
-      <p class="micro" id="dob-privacy">Any format works. Stays on your device — we store nothing.</p>
+      <input class="field" id="dob" type="text" inputmode="numeric" maxlength="10" autocomplete="bday" enterkeyhint="go" spellcheck="false" autocapitalize="off" placeholder="DD/MM/YYYY" aria-describedby="dob-privacy err">
+      <p class="micro" id="dob-privacy">Day, month, year. Stays on your device — we store nothing.</p>
 
       <p class="err hidden" id="err" role="alert"></p>
       <button class="primary" type="submit">Show me my weeks</button>

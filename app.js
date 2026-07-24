@@ -85,33 +85,55 @@
       el.heroSub.textContent = `Your friend has lived about ${fmt(Math.round(a * 365.25 / 7))} weeks. See yours.`;
     }
   })();
-  // --- Birthdate parsing (the field is free text — a native date picker
-  //     makes people scroll decades on mobile; typing is faster) -----------
-  const MONTH_NAMES = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
-  const monthFrom = (tok) => MONTH_NAMES.findIndex((n) => n.startsWith(tok)) + 1;
-  const fullYear = (y) => y >= 100 ? y : y + (y <= new Date().getFullYear() % 100 ? 2000 : 1900);
-  // Accepts "24 July 1999", "July 24 1999", "24/7/1999", "1999-07-24",
-  // "24.07.99", "24071999". Bare numbers are read day-first (this page is
-  // Australian); an impossible day-first date falls back to month-first.
+  // --- Birthdate input: one format, DD/MM/YYYY ---------------------------
+  //     A masked text field, not a native date picker — pickers make people
+  //     scroll decades on mobile, and picker/autofill values have failed to
+  //     come through on some builds. Digits only; slashes appear on their own.
+  const pad2 = (n) => String(n).padStart(2, '0');
+
+  // Normalize whatever lands in the field toward DD/MM/YYYY as it's typed.
+  // Handles the numeric keypad (no slash key), pasted dates with other
+  // separators, browser bday autofill (ISO), and backspacing over slashes.
+  function maskDob(value, deleting) {
+    let m = value.match(/^\s*(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s*$/);
+    if (m) return `${pad2(+m[3])}/${pad2(+m[2])}/${m[1]}`;
+    let v = value
+      .replace(/[.\-\s]/g, '/')
+      .replace(/[^\d/]/g, '')
+      .replace(/\/{2,}/g, '/')
+      .replace(/^\//, '');
+    if (/^\d{5,}$/.test(v)) v = `${v.slice(0, 2)}/${v.slice(2, 4)}/${v.slice(4)}`;
+    const p = v.split('/').slice(0, 3);
+    p[0] = p[0].slice(0, 2);
+    if (p.length > 1) p[1] = p[1].slice(0, 2);
+    if (p.length > 2) p[2] = p[2].slice(0, 4);
+    v = p.join('/');
+    if (!deleting && /^(\d{2}|\d{1,2}\/\d{2})$/.test(v)) v += '/';
+    return v;
+  }
+
+  // Strict day/month/year. Returns { iso } or { err } naming the one thing
+  // to fix — errors stay specific, unhurried, never blaming.
   function parseDob(raw) {
-    const s = raw.trim().toLowerCase().replace(/(\d)(st|nd|rd|th)\b/g, '$1').replace(/,/g, ' ').replace(/\s+/g, ' ');
-    let m, d, mo, y;
-    if ((m = s.match(/^(\d{4})[-/. ](\d{1,2})[-/. ](\d{1,2})$/))) {
-      y = +m[1]; mo = +m[2]; d = +m[3];
-    } else if ((m = s.match(/^(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{2,4})$/))) {
-      d = +m[1]; mo = +m[2]; y = fullYear(+m[3]);
-      if (mo > 12 && d <= 12) { const t = d; d = mo; mo = t; }
-    } else if ((m = s.match(/^(\d{1,2}) ([a-z]{3,9})\.? (\d{2,4})$/))) {
-      d = +m[1]; mo = monthFrom(m[2]); y = fullYear(+m[3]);
-    } else if ((m = s.match(/^([a-z]{3,9})\.? (\d{1,2}) (\d{2,4})$/))) {
-      mo = monthFrom(m[1]); d = +m[2]; y = fullYear(+m[3]);
+    const s = raw.trim();
+    let d, mo, y;
+    let m = s.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})$/); // bday autofill arrives ISO
+    if (m) { y = +m[1]; mo = +m[2]; d = +m[3]; }
+    else if ((m = s.match(/^(\d{1,2})[-/. ](\d{1,2})[-/. ](\d{2,4})$/))) {
+      if (m[3].length !== 4) return { err: 'Use a four-digit year, like 1999.' };
+      d = +m[1]; mo = +m[2]; y = +m[3];
     } else if (/^\d{8}$/.test(s)) {
       d = +s.slice(0, 2); mo = +s.slice(2, 4); y = +s.slice(4);
-    } else return null;
-    if (mo < 1 || mo > 12 || d < 1 || d > 31) return null;
+    } else {
+      return { err: 'Enter it as day/month/year, like 28/06/1999.' };
+    }
+    if (mo > 12 && d <= 12) return { err: 'Day first, then month: 28/06/1999, not 06/28.' };
+    if (mo < 1 || mo > 12) return { err: 'Months run 01 to 12 — check the month.' };
     const date = new Date(y, mo - 1, d);
-    if (date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) return null;
-    return `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+    if (d < 1 || date.getFullYear() !== y || date.getMonth() !== mo - 1 || date.getDate() !== d) {
+      return { err: 'That day doesn’t exist in that month — check the day.' };
+    }
+    return { iso: `${y}-${pad2(mo)}-${pad2(d)}` };
   }
 
   // --- Scroll reveal ----------------------------------------------------
@@ -651,8 +673,9 @@
   function submit() {
     const raw = el.dob.value;
     if (!raw.trim()) return showErr('Enter your birthdate to begin.');
-    const v = parseDob(raw);
-    if (!v) return showErr('Couldn’t read that date. Try something like 24 July 1999 or 24/7/1999.');
+    const parsed = parseDob(raw);
+    if (parsed.err) return showErr(parsed.err);
+    const v = parsed.iso;
     const b = new Date(v + 'T00:00:00'), now = new Date();
     if (b > now) return showErr('That date hasn’t happened yet.');
     const ageY = (now - b) / (365.25 * DAY_MS);
@@ -682,7 +705,16 @@
   }
 
   // --- Wiring -----------------------------------------------------------
-  el.dob.addEventListener('input', clearErr);
+  el.dob.addEventListener('input', (e) => {
+    clearErr();
+    // Reformat only while the caret sits at the end; rewriting the value
+    // mid-edit would throw the caret to the end of the field. Off-caret
+    // input still normalizes at submit — parseDob reads it either way.
+    if (el.dob.selectionStart !== el.dob.value.length) return;
+    const deleting = (e.inputType || '').indexOf('delete') === 0;
+    const masked = maskDob(el.dob.value, deleting);
+    if (masked !== el.dob.value) el.dob.value = masked;
+  });
   el.form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
 
   el.basisSeg.addEventListener('click', (e) => {

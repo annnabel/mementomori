@@ -126,13 +126,19 @@ Scale (all fluid `clamp()`):
   and the share card alike) — the current week is always still burning, never
   "complete". `aria-hidden` with the caption as text equivalent; the caption
   takes focus (`tabindex="-1"`) after submit.
-- **Birthdate field**: free text, not a native date picker — scrolling
-  decades in a picker is high friction on mobile; typing is faster. A
-  forgiving parser reads "24 July 1999", "July 24 1999", "24/7/1999",
-  "1999-07-24", "24.07.99", and "24071999"; bare numbers are day-first
-  (the page is Australian) with a month-first fallback when day-first is
-  impossible. Placeholder shows an example; the parse-failure error names
-  two formats.
+- **Birthdate field**: one format, DD/MM/YYYY — a masked text input, not a
+  native date picker (scrolling decades in a picker is high friction on
+  mobile, and picker/autofill values have failed to come through on some
+  builds). `inputmode="numeric"` raises the digit keypad; slashes insert
+  themselves as you type and backspace removes exactly one character (no
+  slash trap). The mask also normalizes pasted dates (dots, dashes, spaces,
+  bare 8 digits) and browser `bday` autofill, which arrives as ISO. The
+  parser is strict day/month/year and each failure names the one thing to
+  fix: a month-first entry gets "Day first, then month"; a two-digit year
+  gets "Use a four-digit year"; an impossible day names the day. Placeholder
+  is `DD/MM/YYYY` at the `.55` text floor; the microcopy spells out
+  "Day, month, year." for screen readers, since placeholders aren't
+  reliably read.
 - **Chart**: canvas in an unpadded `#chart-wrap` (sized to content width),
   amber vertical scrub line with amber age chip, `touch-action: pan-y`,
   `cursor: ew-resize`. Values plot as a share of a 16-hour waking day
