@@ -98,6 +98,17 @@
     [data-reveal].pre-reveal { opacity: 1; transform: none; }
   }
 
+  /* Each section settles at the top of the viewport instead of stopping
+     wherever a scroll happens to run out — "proximity" only pulls the
+     scroll when it comes to rest near a section, so it never fights a
+     scroll-in-progress or hijacks the chart's horizontal drag. Gated off
+     prefers-reduced-motion since a snap-to-position is itself a motion
+     effect some readers want off. */
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-snap-type: y proximity; }
+    .hero, .calendar, .chart-sec, .reframe, .act { scroll-snap-align: start; }
+  }
+
   /* ---- Layout ---- */
   .wrap { max-width: 680px; margin: 0 auto; }
 
