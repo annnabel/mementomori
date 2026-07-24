@@ -51,7 +51,7 @@
     --amber: #D9863B;
     --amber-hi: #E8A05F;
     --field: #141412;
-    --field-border: #2C2B28;
+    --field-border: #3E3C38;
     --serif: 'Newsreader', Georgia, serif;
     --sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   }
@@ -166,7 +166,8 @@
     white-space: nowrap;
     transition: background .15s ease, color .15s ease, border-color .15s ease;
   }
-  .seg button[aria-pressed="true"] {
+  .seg button[aria-pressed="true"],
+  .seg button[aria-checked="true"] {
     background: var(--fg);
     color: var(--bg);
     border-color: var(--fg);
@@ -206,7 +207,10 @@
   .quiet-link {
     background: none;
     border: none;
-    padding: 0;
+    /* Visually inline small print, but a ≥44px touch target: the padding
+       grows the hit area and the negative margin gives the space back. */
+    padding: 15px 4px;
+    margin: -15px -4px;
     font: inherit;
     color: var(--amber);
     text-decoration: underline;
@@ -381,10 +385,10 @@
       <div id="grid-wrap"><canvas id="grid" aria-hidden="true"></canvas></div>
       <p class="caption" id="cap-main" aria-live="polite" tabindex="-1"></p>
       <p class="small-print" id="small-print"><span id="small-print-text"></span><button class="quiet-link" type="button" id="basis-toggle" aria-expanded="false" aria-controls="basis-seg">Change life expectancy</button> · <button class="quiet-link" type="button" id="edit-dob"></button></p>
-      <div class="seg basis-seg hidden" id="basis-seg" role="group" aria-label="Life expectancy basis">
-        <button type="button" data-sex="f" aria-pressed="false">Female · 85.1 years</button>
-        <button type="button" data-sex="m" aria-pressed="false">Male · 81.1 years</button>
-        <button type="button" data-sex="" aria-pressed="true">Average · 83.1 years</button>
+      <div class="seg basis-seg hidden" id="basis-seg" role="radiogroup" aria-label="Life expectancy basis">
+        <button type="button" role="radio" data-sex="f" aria-checked="false" tabindex="-1">Female · 85.1 years</button>
+        <button type="button" role="radio" data-sex="m" aria-checked="false" tabindex="-1">Male · 81.1 years</button>
+        <button type="button" role="radio" data-sex="" aria-checked="true">Average · 83.1 years</button>
       </div>
     </section>
 
