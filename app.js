@@ -44,14 +44,15 @@
 
   // Grid / chart runtime handles
   let grid = null, gridRaf = 0, pulseRaf = 0, pulseVisible = true, vio = null;
-  let chart = null, scrub = null, dragging = false;
+  let chart = null, scrub = null, dragging = false, cardUrl = null;
 
   // --- Elements ---------------------------------------------------------
   const el = {
-    form: $('birth-form'), dob: $('dob'), err: $('err'), sexSeg: $('sex-seg'),
+    form: $('birth-form'), dob: $('dob'), err: $('err'),
+    basisSeg: $('basis-seg'), basisToggle: $('basis-toggle'), editDob: $('edit-dob'),
     heroSub: $('hero-sub'), results: $('results'),
     gridWrap: $('grid-wrap'), gridCanvas: $('grid'),
-    capMain: $('cap-main'), smallPrint: $('small-print'),
+    capMain: $('cap-main'), smallPrintText: $('small-print-text'),
     legend: $('legend'), chartCanvas: $('chart'), readout: $('readout'), insight: $('insight'),
     actPrompt: $('act-prompt'), name: $('name'), sms: $('sms'), weekNext: $('week-next'),
     share: $('share'), shareMsg: $('share-msg'),
@@ -66,6 +67,7 @@
     }
   })();
   el.dob.max = new Date().toISOString().slice(0, 10);
+  el.dob.min = new Date(Date.now() - 100 * 365.25 * DAY_MS).toISOString().slice(0, 10);
 
   // --- Scroll reveal ----------------------------------------------------
   let revealIO = null;
@@ -123,7 +125,9 @@
     const ctx = setupCanvas(c, w, h);
     const total = totalWeeks();
     const capped = Math.min(state.lived, total);
-    const current = capped < total ? capped : -1;
+    // Past expectancy the ember moves to the last cell — the current week is
+    // always still burning, never "complete".
+    const current = capped < total ? capped : total - 1;
     grid = { ctx, cell, rows, w, h, current, capped };
 
     const dur = (animate && !prefersReduced()) ? 1500 : 0;
@@ -132,7 +136,7 @@
       const p = dur ? Math.min(1, (t - t0) / dur) : 1;
       drawGrid(Math.floor(p * capped));
       if (p < 1) gridRaf = requestAnimationFrame(step);
-      else startPulse();
+      else { startPulse(); if (dur) nudgeCaption(); }
     };
     gridRaf = requestAnimationFrame(step);
 
@@ -159,6 +163,17 @@
       g.ctx.restore();
     };
     pulseRaf = requestAnimationFrame(loop);
+  }
+  // After the first fill, if the caption's numbers ended up below the fold
+  // and the user hasn't scrolled on their own, ease them into view.
+  function nudgeCaption() {
+    if (state.autoScrollTop == null) return;
+    const undisturbed = Math.abs(window.scrollY - state.autoScrollTop) < 4;
+    state.autoScrollTop = null;
+    if (!undisturbed) return;
+    const r = el.capMain.getBoundingClientRect();
+    const overflow = r.bottom + 16 - window.innerHeight;
+    if (overflow > 0) window.scrollBy({ top: overflow, behavior: 'smooth' });
   }
 
   // --- Section 3: the chart --------------------------------------------
@@ -228,14 +243,21 @@
     }
     ctx.globalAlpha = 1;
 
-    // "You are here" line + tooltip
+    // Scrub line. "YOU ARE HERE" only when the line sits at the user's real
+    // age — a scrubbed line is labeled by the age it shows, and the user's
+    // own position keeps a tick on the axis so "you" never disappears.
     const age = scrub, xi = X(age), idx = Math.min(65, Math.max(0, age - 15));
+    const isYou = state.submitted && age === state.age;
+    if (state.submitted && !isYou && state.age >= 15 && state.age <= 80) {
+      ctx.fillStyle = 'rgba(217,134,59,.6)';
+      ctx.beginPath(); ctx.arc(X(state.age), h - m.b, 3, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.strokeStyle = '#D9863B'; ctx.lineWidth = 1.4;
     ctx.beginPath(); ctx.moveTo(xi, m.t - 6); ctx.lineTo(xi, h - m.b); ctx.stroke();
     ctx.fillStyle = '#D9863B';
     ctx.beginPath(); ctx.arc(xi, m.t - 6, 3.5, 0, Math.PI * 2); ctx.fill();
     ctx.font = '600 10px Helvetica, Arial, sans-serif'; ctx.textBaseline = 'alphabetic';
-    const lbl = 'YOU ARE HERE · ' + age;
+    const lbl = (isYou ? 'YOU ARE HERE · ' : 'AGE ') + age;
     const onRight = xi < w / 2;
     ctx.textAlign = onRight ? 'left' : 'right';
     ctx.fillText(lbl, xi + (onRight ? 8 : -8), m.t - 3);
@@ -243,10 +265,11 @@
     // Per-age values live in the DOM readout below the canvas (not a canvas
     // tooltip): nothing occludes the lines, and the values are selectable,
     // keyboard-reachable text.
+    // Stable legend order (not sorted by value) so a tracked series never
+    // hops position while scrubbing.
     const rows = SERIES_ORDER
       .filter((k) => !state.hidden[k])
-      .map((k) => ({ k, v: D.series[k][idx] }))
-      .sort((a, b) => b.v - a.v);
+      .map((k) => ({ k, v: D.series[k][idx] }));
     renderReadout(age, rows);
   }
   function renderReadout(age, rows) {
@@ -303,7 +326,7 @@
   function insightFor(a) {
     return a < 20 ? 'Your time with parents and siblings is near its lifetime peak. It falls sharply from here.'
       : a <= 35 ? 'Time with friends has already peaked. Time with a partner and children is what these decades are made of.'
-      : a <= 55 ? 'Time with your children is peaking now — and it will fall faster than you expect.'
+      : a <= 55 ? 'If you have children, your time with them is peaking now — and it will fall faster than you expect.'
       : 'Time alone rises for the rest of life. What you do with it is the question.';
   }
   function sexBasisText() {
@@ -320,7 +343,8 @@
     el.capMain.textContent = bonus
       ? 'You’re living in bonus time. Every week is a gift.'
       : `You have lived ${fmt(capped)} of your ~${fmt(total)} weeks. ${fmt(remain)} remain, on average.`;
-    el.smallPrint.textContent = `Based on Australian life expectancy at birth: ${sexBasisText()}.`;
+    el.smallPrintText.textContent = `Based on life expectancy at birth in Australia, where this page was made: ${sexBasisText()}. `;
+    el.editDob.textContent = `Born ${new Date(state.birthVal + 'T00:00:00').toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })} — edit`;
     el.insight.textContent = insightFor(state.age);
     el.actPrompt.textContent = bonus
       ? 'Who came to mind just now?'
@@ -352,11 +376,14 @@
       const rows = lifespan(), cell = 12, gw = 52 * cell, gx = (W - gw) / 2, gy = 100;
       const total = totalWeeks();
       const capped = Math.min(state.lived, total);
+      // Same ember rule as the on-page grid: past expectancy it sits on the
+      // last cell instead of vanishing.
+      const ember = capped < total ? capped : total - 1;
       for (let i = 0; i < rows * 52; i++) {
         const x = gx + (i % 52) * cell + cell / 2;
         const y = gy + Math.floor(i / 52) * cell + cell / 2;
-        ctx.fillStyle = i === capped ? '#D9863B' : i < capped ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.14)';
-        ctx.beginPath(); ctx.arc(x, y, i === capped ? cell * 0.46 : cell * 0.32, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = i === ember ? '#D9863B' : i < capped ? 'rgba(237,234,228,.92)' : 'rgba(237,234,228,.14)';
+        ctx.beginPath(); ctx.arc(x, y, i === ember ? cell * 0.46 : cell * 0.32, 0, Math.PI * 2); ctx.fill();
       }
       ctx.textAlign = 'center';
       ctx.fillStyle = '#EDEAE4';
@@ -379,18 +406,25 @@
         try { await navigator.share({ files: [file], text, url }); return; }
         catch (e) { if (e.name === 'AbortError') return; }
       }
+      // No share sheet here (desktop, usually): copy the link, and offer the
+      // card as an explicit download rather than forcing a file on anyone.
       await navigator.clipboard.writeText(text + ' ' + url);
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = 'your-life-in-weeks.png';
-      a.click();
-      showShareMsg('Link copied — card image downloaded.');
+      if (cardUrl) URL.revokeObjectURL(cardUrl);
+      cardUrl = URL.createObjectURL(blob);
+      showShareMsg('Link copied. ', { href: cardUrl, label: 'Download the card image', download: 'your-life-in-weeks.png' });
     } catch (e) {
       showShareMsg('Couldn’t share here — try on your phone.');
     }
   }
-  function showShareMsg(msg) {
+  function showShareMsg(msg, link) {
     el.shareMsg.textContent = msg;
+    if (link) {
+      const a = document.createElement('a');
+      a.href = link.href;
+      a.download = link.download;
+      a.textContent = link.label;
+      el.shareMsg.appendChild(a);
+    }
     el.shareMsg.classList.remove('hidden');
   }
 
@@ -407,10 +441,10 @@
     const v = state.birthVal;
     if (!v) return showErr('Enter your birthdate to begin.');
     const b = new Date(v + 'T00:00:00'), now = new Date();
-    if (isNaN(b)) return showErr('That date didn’t parse — try again.');
+    if (isNaN(b)) return showErr('That date didn’t come through — try picking it again.');
     if (b > now) return showErr('That date hasn’t happened yet.');
     const ageY = (now - b) / (365.25 * DAY_MS);
-    if (ageY > 99) return showErr('This works for ages up to 99 — check the year.');
+    if (ageY > 99) return showErr('That’s more than 99 years ago — check the year.');
 
     clearErr();
     state.lived = Math.floor((now - b) / (7 * DAY_MS));
@@ -428,21 +462,34 @@
     if (el.gridWrap) {
       const top = el.gridWrap.getBoundingClientRect().top + window.scrollY - 28;
       window.scrollTo({ top, behavior: prefersReduced() ? 'auto' : 'smooth' });
+      state.autoScrollTop = top;
     }
+    // Hand screen readers and the keyboard the story, not the submit button.
+    el.capMain.focus({ preventScroll: true });
   }
 
   // --- Wiring -----------------------------------------------------------
   el.dob.addEventListener('input', (e) => { state.birthVal = e.target.value; clearErr(); });
   el.form.addEventListener('submit', (e) => { e.preventDefault(); submit(); });
 
-  el.sexSeg.addEventListener('click', (e) => {
+  el.basisSeg.addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-sex]');
     if (!btn) return;
     state.sex = btn.getAttribute('data-sex');
-    el.sexSeg.querySelectorAll('button').forEach((b) => {
+    el.basisSeg.querySelectorAll('button').forEach((b) => {
       b.setAttribute('aria-pressed', String(b === btn));
     });
     if (state.submitted) { startGrid(false); renderText(); }
+  });
+
+  el.basisToggle.addEventListener('click', () => {
+    const open = !el.basisSeg.classList.toggle('hidden');
+    el.basisToggle.setAttribute('aria-expanded', String(open));
+  });
+
+  el.editDob.addEventListener('click', () => {
+    document.querySelector('.hero').scrollIntoView({ behavior: prefersReduced() ? 'auto' : 'smooth' });
+    el.dob.focus({ preventScroll: true });
   });
 
   el.name.addEventListener('input', (e) => { state.name = e.target.value; updateSms(); });
