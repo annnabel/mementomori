@@ -64,9 +64,8 @@
     age: 0,
     sex: '',          // '', 'm', 'f'
     name: '',
-    // Series key -> true when hidden. Alone, Partner, and Friends start on —
-    // the three the insight copy speaks to; the rest are a tap away.
-    hidden: { family: true, children: true, coworkers: true },
+    // Series key -> true when hidden. All start visible; a tap hides one.
+    hidden: {},
   };
 
   const lifespanExact = () => state.sex === 'm' ? 81.1 : state.sex === 'f' ? 85.1 : 83.1;
@@ -758,8 +757,12 @@
     startGrid(true);
     startChart();
 
-    if (el.gridWrap) {
-      const top = el.gridWrap.getBoundingClientRect().top + window.scrollY - 28;
+    // Scroll to the calendar *section*, not the grid canvas itself — the
+    // grid sits below an intro line ("Each column is a year…"); targeting
+    // the canvas directly pushed that line off the top of the viewport.
+    const calSec = el.gridWrap && el.gridWrap.closest('section');
+    if (calSec) {
+      const top = calSec.getBoundingClientRect().top + window.scrollY - 16;
       window.scrollTo({ top, behavior: prefersReduced() ? 'auto' : 'smooth' });
       state.autoScrollTop = top;
     }
