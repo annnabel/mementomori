@@ -109,6 +109,12 @@
     .hero, .calendar, .chart-sec, .reframe, .act { scroll-snap-align: start; }
   }
 
+  /* A focused field suspends snap: on Android, opening the keyboard can
+     resize the layout viewport mid-type, and a proximity snap firing on
+     that resize yanks the page back to the top of the section — which
+     steals focus from the field and closes the keyboard with it. */
+  html.kb-open { scroll-snap-type: none; }
+
   /* ---- Layout ---- */
   .wrap { max-width: 680px; margin: 0 auto; }
 
