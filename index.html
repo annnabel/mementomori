@@ -210,7 +210,18 @@
   .primary:active { transform: translateY(1px); }
 
   /* ---- Calendar ---- */
-  .calendar { padding: 48px 24px 72px; max-width: 680px; margin: 0 auto; }
+  /* min-height + centering (echoing .hero) so a short viewport never lets
+     the following section's heading bleed into frame mid-word when scroll
+     snap settles at the top of this one. */
+  .calendar {
+    min-height: 92svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 24px 72px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
   .calendar canvas { display: block; width: 100%; }
   .caption {
     font-family: var(--serif);
@@ -238,7 +249,15 @@
   .basis-seg { margin-top: 12px; }
 
   /* ---- Chart ---- */
-  .chart-sec { padding: 96px 24px; max-width: 680px; margin: 0 auto; }
+  .chart-sec {
+    min-height: 92svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 96px 24px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
   .chart-sec h2 {
     font-family: var(--serif);
     font-weight: 400;
@@ -300,22 +319,44 @@
   .next-cue { display: flex; justify-content: center; margin-top: 48px; }
   .next-cue button {
     background: none;
-    border: none;
+    border: 1px solid rgba(217,134,59,.35);
+    border-radius: 999px;
     padding: 12px;
-    min-width: 44px;
-    min-height: 44px;
+    min-width: 48px;
+    min-height: 48px;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: rgba(237,234,228,.4);
+    color: rgba(217,134,59,.85);
     cursor: pointer;
-    transition: color .2s ease;
+    transition: color .2s ease, border-color .2s ease, background-color .2s ease;
   }
-  .next-cue button:hover { color: rgba(237,234,228,.75); }
-  .next-cue svg { width: 20px; height: 20px; display: block; }
+  .next-cue button:hover,
+  .next-cue button:focus-visible {
+    color: var(--amber-hi);
+    border-color: rgba(217,134,59,.7);
+    background: rgba(217,134,59,.08);
+  }
+  .next-cue svg { width: 24px; height: 24px; display: block; stroke-width: 2.5; }
+  @media (prefers-reduced-motion: no-preference) {
+    .next-cue svg { animation: next-cue-bob 2.2s ease-in-out infinite; }
+    .next-cue button:hover svg,
+    .next-cue button:focus-visible svg { animation-play-state: paused; }
+  }
+  @keyframes next-cue-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
+  }
 
   /* ---- Reframe ---- */
-  .reframe { padding: 140px 24px; text-align: center; }
+  .reframe {
+    min-height: 92svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 140px 24px;
+    text-align: center;
+  }
   .reframe blockquote {
     font-family: var(--serif);
     font-style: italic;
@@ -345,7 +386,15 @@
   .reframe .wealth .fade { color: rgba(237,234,228,.5); }
 
   /* ---- Act + share ---- */
-  .act { padding: 96px 24px 160px; max-width: 680px; margin: 0 auto; }
+  .act {
+    min-height: 92svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 96px 24px 160px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
   .act h2 {
     font-family: var(--serif);
     font-weight: 400;
