@@ -254,7 +254,11 @@
     display: flex;
     flex-direction: column;
     justify-content: center;
-    padding: 96px 24px;
+    /* Fluid, not a fixed 96px: the chart section has the most content of
+       any fold (title, legend, canvas, hint, readout, source, insight), so
+       on a short phone viewport the padding needs to yield before anything
+       else does. Scales back up to the full 96px once there's room. */
+    padding: clamp(20px, 5svh, 96px) 24px;
     max-width: 680px;
     margin: 0 auto;
   }
@@ -264,7 +268,7 @@
     font-size: clamp(28px, 6vw, 38px);
     line-height: 1.15;
     letter-spacing: -0.01em;
-    margin: 0 0 28px;
+    margin: 0 0 clamp(10px, 2.5svh, 28px);
     text-wrap: balance;
   }
   .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
@@ -310,13 +314,13 @@
     font-family: var(--serif);
     font-size: clamp(19px, 4vw, 23px);
     line-height: 1.45;
-    margin: 40px 0 0;
+    margin: clamp(12px, 3svh, 40px) 0 0;
     color: var(--fg);
     text-wrap: pretty;
   }
 
   /* ---- Next cue ---- */
-  .next-cue { display: flex; justify-content: center; margin-top: 48px; }
+  .next-cue { display: flex; justify-content: center; margin-top: clamp(16px, 4svh, 48px); }
   .next-cue button {
     background: none;
     border: 1px solid rgba(217,134,59,.35);

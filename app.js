@@ -353,7 +353,13 @@
     const c = el.chartCanvas;
     if (!c || !c.parentElement) return;
     const w = c.parentElement.clientWidth;
-    const h = Math.min(360, Math.max(260, w * 0.62));
+    // On phone-width viewports the chart shares the fold with a title,
+    // legend, hint, readout, source note, and insight line — give it less
+    // room so the whole section can fit a single phone screen instead of
+    // spilling past it. Wider viewports keep the original sizing.
+    const h = w < 600
+      ? Math.min(230, Math.max(180, Math.min(w * 0.55, window.innerHeight * 0.24)))
+      : Math.min(360, Math.max(260, w * 0.62));
     const ctx = setupCanvas(c, w, h);
     // On wider viewports each line gets a direct label at its right end, so
     // identity never rides on color alone; reserve the margin for the longest
