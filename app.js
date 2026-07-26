@@ -545,24 +545,38 @@
       : state.sex === 'f' ? '85.1 years (females)'
       : '83.1 years (average of 81.1 for males and 85.1 for females)';
   }
+  // Interleave plain strings and <b>-wrapped numbers — the numbers are the
+  // payload, so they carry the full available weight (styled in CSS).
+  function withNums(target, parts) {
+    target.replaceChildren(...parts.map((p) => {
+      if (typeof p === 'string') return document.createTextNode(p);
+      const b = document.createElement('b');
+      b.textContent = p.num;
+      return b;
+    }));
+  }
   function renderText() {
     const total = totalWeeks();
     const capped = Math.min(state.lived, total);
     const remain = Math.max(0, total - state.lived);
     const bonus = state.submitted && state.age >= lifespan();
 
-    el.capMain.textContent = bonus
-      ? 'You’re living in bonus time. Every week is a gift.'
-      : `You have lived ${fmt(capped)} of your ~${fmt(total)} weeks. ${fmt(remain)} remain, on average.`;
+    if (bonus) {
+      el.capMain.textContent = 'You’re living in bonus time. Every week is a gift.';
+    } else {
+      withNums(el.capMain, ['You have lived ', { num: fmt(capped) }, ' of your ~', { num: fmt(total) }, ' weeks. ', { num: fmt(remain) }, ' remain, on average.']);
+    }
     el.smallPrintText.textContent = `Based on life expectancy at birth in Australia, where this page was made: ${sexBasisText()}. `;
     // The date renders in the reader's own locale; the surrounding sentence
     // stays English, so the weekday below does too.
     const b = new Date(state.birthVal + 'T00:00:00');
     el.editDob.textContent = `Born ${b.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })} — edit`;
     el.insight.textContent = insightFor(state.age);
-    el.actPrompt.textContent = bonus
-      ? 'Who came to mind just now?'
-      : `You have ${fmt(remain)} weeks left. Who came to mind just now?`;
+    if (bonus) {
+      el.actPrompt.textContent = 'Who came to mind just now?';
+    } else {
+      withNums(el.actPrompt, ['You have ', { num: fmt(remain) }, ' weeks left. Who came to mind just now?']);
+    }
     // Week #lived+1 is the one burning now (the ember); the next one starts
     // on the birth weekday, not a generic Monday.
     el.weekNext.textContent = `Your week #${fmt(state.lived + 2)} starts ${b.toLocaleDateString('en-US', { weekday: 'long' })}.`;
@@ -635,11 +649,11 @@
       ctx.letterSpacing = '0px';
 
       ctx.fillStyle = INK.fg;
-      ctx.font = '300 58px Newsreader, Georgia, serif';
-      ctx.fillText(`I’ve lived ${fmt(capped)} weeks.`, W / 2, 268);
+      ctx.font = '300 74px Newsreader, Georgia, serif';
+      ctx.fillText(`I’ve lived ${fmt(capped)} weeks.`, W / 2, 278);
       ctx.fillStyle = INK.fgA(.6);
-      ctx.font = 'italic 300 33px Newsreader, Georgia, serif';
-      ctx.fillText(bonus ? 'Bonus time. Every week is a gift.' : `About ${fmt(remain)} of my ~${fmt(total)} remain.`, W / 2, 332);
+      ctx.font = 'italic 300 34px Newsreader, Georgia, serif';
+      ctx.fillText(bonus ? 'Bonus time. Every week is a gift.' : `About ${fmt(remain)} of my ~${fmt(total)} remain.`, W / 2, 346);
 
       // NOW marker above the ember's column, clamped so the label never
       // leaves the card at either end of a life.
@@ -659,7 +673,7 @@
         ctx.beginPath(); ctx.arc(x, y, cell * 0.32, 0, Math.PI * 2); ctx.fill();
       }
       ctx.save();
-      ctx.shadowColor = INK.amberA(.85); ctx.shadowBlur = 14;
+      ctx.shadowColor = INK.amberA(.85); ctx.shadowBlur = 18;
       ctx.fillStyle = INK.amber;
       ctx.beginPath(); ctx.arc(nowX, gy + (ember % 52) * cell + cell / 2, cell * 0.5, 0, Math.PI * 2); ctx.fill();
       ctx.restore();
@@ -678,7 +692,7 @@
       }
 
       ctx.fillStyle = INK.fgA(.6);
-      ctx.font = 'italic 300 32px Newsreader, Georgia, serif';
+      ctx.font = 'italic 300 34px Newsreader, Georgia, serif';
       ctx.fillText('You have about 4,000 weeks. See yours.', W / 2, 1196);
       ctx.fillStyle = INK.amber;
       ctx.font = '26px Helvetica, Arial, sans-serif';
