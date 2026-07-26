@@ -64,9 +64,8 @@
     age: 0,
     sex: '',          // '', 'm', 'f'
     name: '',
-    // Series key -> true when hidden. Alone, Partner, and Friends start on —
-    // the three the insight copy speaks to; the rest are a tap away.
-    hidden: { family: true, children: true, coworkers: true },
+    // Series key -> true when hidden. All start visible; a tap hides one.
+    hidden: {},
   };
 
   const lifespanExact = () => state.sex === 'm' ? 81.1 : state.sex === 'f' ? 85.1 : 83.1;
@@ -354,7 +353,13 @@
     const c = el.chartCanvas;
     if (!c || !c.parentElement) return;
     const w = c.parentElement.clientWidth;
-    const h = Math.min(360, Math.max(260, w * 0.62));
+    // On phone-width viewports the chart shares the fold with a title,
+    // legend, hint, readout, source note, and insight line — give it less
+    // room so the whole section can fit a single phone screen instead of
+    // spilling past it. Wider viewports keep the original sizing.
+    const h = w < 600
+      ? Math.min(230, Math.max(180, Math.min(w * 0.55, window.innerHeight * 0.24)))
+      : Math.min(360, Math.max(260, w * 0.62));
     const ctx = setupCanvas(c, w, h);
     // On wider viewports each line gets a direct label at its right end, so
     // identity never rides on color alone; reserve the margin for the longest
@@ -772,8 +777,12 @@
     startGrid(true);
     startChart();
 
-    if (el.gridWrap) {
-      const top = el.gridWrap.getBoundingClientRect().top + window.scrollY - 28;
+    // Scroll to the calendar *section*, not the grid canvas itself — the
+    // grid sits below an intro line ("Each column is a year…"); targeting
+    // the canvas directly pushed that line off the top of the viewport.
+    const calSec = el.gridWrap && el.gridWrap.closest('section');
+    if (calSec) {
+      const top = calSec.getBoundingClientRect().top + window.scrollY - 16;
       window.scrollTo({ top, behavior: prefersReduced() ? 'auto' : 'smooth' });
       state.autoScrollTop = top;
     }
@@ -783,6 +792,16 @@
   }
 
   // --- Wiring -----------------------------------------------------------
+  // See the .kb-open rule in index.html: suspend scroll-snap for as long as
+  // any field holds focus, so a keyboard-driven viewport resize can't snap
+  // the page out from under a field mid-type.
+  document.addEventListener('focusin', (e) => {
+    if (e.target.matches('input, textarea')) document.documentElement.classList.add('kb-open');
+  });
+  document.addEventListener('focusout', (e) => {
+    if (e.target.matches('input, textarea')) document.documentElement.classList.remove('kb-open');
+  });
+
   el.dob.addEventListener('input', (e) => {
     clearErr();
     // Reformat only while the caret sits at the end; rewriting the value
@@ -834,6 +853,18 @@
 
   el.name.addEventListener('input', (e) => { state.name = e.target.value; updateSms(); });
   el.share.addEventListener('click', doShare);
+
+  // "Continue" cues at the foot of each section: an explicit click carries
+  // the reader forward through the arc instead of leaving free scroll as
+  // the only way to discover the next section is there.
+  document.querySelectorAll('.next-cue-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = $(btn.dataset.next);
+      if (!target) return;
+      const top = target.getBoundingClientRect().top + window.scrollY - 16;
+      window.scrollTo({ top, behavior: prefersReduced() ? 'auto' : 'smooth' });
+    });
+  });
 
   let resizeTimer = 0;
   window.addEventListener('resize', () => {

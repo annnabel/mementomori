@@ -108,6 +108,23 @@
     [data-reveal].pre-reveal { opacity: 1; transform: none; }
   }
 
+  /* Each section settles at the top of the viewport instead of stopping
+     wherever a scroll happens to run out — "proximity" only pulls the
+     scroll when it comes to rest near a section, so it never fights a
+     scroll-in-progress or hijacks the chart's horizontal drag. Gated off
+     prefers-reduced-motion since a snap-to-position is itself a motion
+     effect some readers want off. */
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-snap-type: y proximity; }
+    .hero, .calendar, .chart-sec, .reframe, .act { scroll-snap-align: start; }
+  }
+
+  /* A focused field suspends snap: on Android, opening the keyboard can
+     resize the layout viewport mid-type, and a proximity snap firing on
+     that resize yanks the page back to the top of the section — which
+     steals focus from the field and closes the keyboard with it. */
+  html.kb-open { scroll-snap-type: none; }
+
   /* ---- Layout ---- */
   .wrap { max-width: 680px; margin: 0 auto; }
 
@@ -232,7 +249,18 @@
   .primary:active { transform: translateY(1px); }
 
   /* ---- Calendar ---- */
-  .calendar { padding: 56px 24px 88px; max-width: 680px; margin: 0 auto; }
+  /* min-height + centering (echoing .hero) so a short viewport never lets
+     the following section's heading bleed into frame mid-word when scroll
+     snap settles at the top of this one. */
+  .calendar {
+    min-height: 92svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: 48px 24px 72px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
   .calendar canvas { display: block; width: 100%; }
   .caption {
     font-family: var(--serif);
@@ -262,14 +290,26 @@
   .basis-seg { margin-top: 12px; }
 
   /* ---- Chart ---- */
-  .chart-sec { padding: clamp(96px, 15vh, 160px) 24px; max-width: 680px; margin: 0 auto; }
+  .chart-sec {
+    min-height: 92svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    /* Fluid, not a fixed 96px: the chart section has the most content of
+       any fold (title, legend, canvas, hint, readout, source, insight), so
+       on a short phone viewport the padding needs to yield before anything
+       else does. Scales back up to the full 96px once there's room. */
+    padding: clamp(20px, 5svh, 96px) 24px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
   .chart-sec h2 {
     font-family: var(--serif);
     font-weight: 400;
     font-size: clamp(30px, 7vw, 52px);
     line-height: 1.12;
     letter-spacing: -0.012em;
-    margin: 0 0 36px;
+    margin: 0 0 clamp(10px, 2.5svh, 28px);
     text-wrap: balance;
   }
   .legend { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 8px; }
@@ -315,9 +355,42 @@
     font-family: var(--serif);
     font-size: clamp(21px, 4.5vw, 27px);
     line-height: 1.45;
-    margin: 44px 0 0;
+    margin: clamp(12px, 3svh, 44px) 0 0;
     color: var(--fg);
     text-wrap: pretty;
+  }
+
+  /* ---- Next cue ---- */
+  .next-cue { display: flex; justify-content: center; margin-top: clamp(16px, 4svh, 48px); }
+  .next-cue button {
+    background: none;
+    border: 1px solid rgba(217,134,59,.35);
+    border-radius: 999px;
+    padding: 12px;
+    min-width: 48px;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgba(217,134,59,.85);
+    cursor: pointer;
+    transition: color .2s ease, border-color .2s ease, background-color .2s ease;
+  }
+  .next-cue button:hover,
+  .next-cue button:focus-visible {
+    color: var(--amber-hi);
+    border-color: rgba(217,134,59,.7);
+    background: rgba(217,134,59,.08);
+  }
+  .next-cue svg { width: 24px; height: 24px; display: block; stroke-width: 2.5; }
+  @media (prefers-reduced-motion: no-preference) {
+    .next-cue svg { animation: next-cue-bob 2.2s ease-in-out infinite; }
+    .next-cue button:hover svg,
+    .next-cue button:focus-visible svg { animation-play-state: paused; }
+  }
+  @keyframes next-cue-bob {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(4px); }
   }
 
   /* ---- Reframe ---- */
@@ -360,7 +433,15 @@
   .reframe .wealth .fade { color: rgba(237,234,228,.5); }
 
   /* ---- Act + share ---- */
-  .act { padding: clamp(96px, 15vh, 160px) 24px 180px; max-width: 680px; margin: 0 auto; }
+  .act {
+    min-height: 92svh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    padding: clamp(96px, 15vh, 160px) 24px 180px;
+    max-width: 680px;
+    margin: 0 auto;
+  }
   .act h2 {
     font-family: var(--serif);
     font-weight: 400;
@@ -440,10 +521,13 @@
         <button type="button" role="radio" data-sex="m" aria-checked="false" tabindex="-1">Male · 81.1 years</button>
         <button type="button" role="radio" data-sex="" aria-checked="true">Average · 83.1 years</button>
       </div>
+      <div class="next-cue">
+        <button type="button" class="next-cue-btn" data-next="chart-sec" aria-label="Continue to who fills the weeks that remain"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
     </section>
 
     <!-- 3 · Chart -->
-    <section class="chart-sec" data-reveal aria-labelledby="chart-title">
+    <section class="chart-sec" id="chart-sec" data-reveal aria-labelledby="chart-title">
       <h2 id="chart-title">Who fills the weeks that remain</h2>
       <div class="legend" id="legend" role="group" aria-label="Toggle who is shown on the chart"></div>
       <div id="chart-wrap"><canvas id="chart" tabindex="0" role="slider" aria-orientation="horizontal" aria-valuemin="15" aria-valuemax="80" aria-label="Share of the waking day spent with different people, by age. Use the left and right arrow keys to change the age."></canvas></div>
@@ -451,17 +535,23 @@
       <p class="readout" id="readout"></p>
       <p class="source">U.S. data — American Time Use Survey, via Our World in Data. Shown as a share of a 16-hour waking day. Time with two people at once counts in both lines, so the shares don’t sum to 100%. Lines are lightly smoothed. The data ends at age 80.</p>
       <p class="insight" id="insight"></p>
+      <div class="next-cue">
+        <button type="button" class="next-cue-btn" data-next="reframe-sec" aria-label="Continue to the reframe"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
     </section>
 
     <!-- 4 · Reframe -->
-    <section class="reframe" data-reveal>
+    <section class="reframe" id="reframe-sec" data-reveal>
       <blockquote>&ldquo;It is not that we have a short time to live, but that we waste a lot of it.&rdquo;</blockquote>
       <p class="attr">Seneca — On the Shortness of Life</p>
       <p class="wealth">Time Wealth is using the awareness of time&rsquo;s impermanence to spark action: the power to direct your attention to what truly matters, and control over how, where, and with whom you spend your time. <span class="fade">(After Sahil Bloom, The 5 Types of Wealth.)</span></p>
+      <div class="next-cue">
+        <button type="button" class="next-cue-btn" data-next="act-sec" aria-label="Continue to name someone"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
+      </div>
     </section>
 
     <!-- 5 · Act + share -->
-    <section class="act" data-reveal aria-labelledby="act-prompt">
+    <section class="act" id="act-sec" data-reveal aria-labelledby="act-prompt">
       <h2 id="act-prompt"></h2>
       <div class="col">
         <input class="field" id="name" type="text" placeholder="A first name" aria-label="A first name" autocomplete="off" maxlength="30">

@@ -203,11 +203,18 @@ emotional peaks carry 3–4× jumps over body size, not 1.5×):
 
 - Containers: 680px max (calendar, chart, act), 760px (hero, for the
   monumental h1), 900px (quote). Side padding 24px.
-- Vertical rhythm is deliberately uneven — it breathes where the emotion
-  peaks: the hero and the reframe each own a full viewport (`100svh`);
-  chart and act sections pad with `clamp(96px, 15vh, 160px)`; the act ends
-  with 180px bottom padding. Two full-viewport moments bracket the arc:
-  the promise (hero) and the reframe (Seneca).
+- Every section is a fold: the hero and the reframe own a full viewport
+  (`100svh`); calendar, chart, and act are `min-height: 92svh`,
+  flex-centered, so scroll snap always settles on a complete thought.
+  Chart padding is fluid (`clamp(20px, 5svh, 96px)`) because that fold has
+  the most content and must fit a short phone screen; act pads with
+  `clamp(96px, 15vh, 160px)` and ends with 180px bottom padding.
+- Scroll snap: `scroll-snap-type: y proximity` on `html`, `snap-align:
+  start` per section — proximity only, so it never fights a scroll in
+  progress or the chart's horizontal drag. Suspended while a field is
+  focused (`html.kb-open`) so Android keyboard resizes can't yank the
+  page, and gated off entirely under `prefers-reduced-motion`. An amber
+  "next" cue (bobbing chevron button) advances section to section.
 - Forms and CTA stacks cap at 380px wide with 10–12px gaps.
 - Radius scale: 8px (fields, buttons), 999px (chips). No cards, no panels —
   content sits directly on the dark ground.
